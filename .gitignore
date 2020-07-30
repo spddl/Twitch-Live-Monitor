@@ -1,0 +1,19 @@
+# dependencies
+/node_modules
+
+# testing
+/coverage
+
+# production
+/build
+
+# secrets
+secrets.*.js
+
+.vscode
+
+/src/Kleine Kacheln - 440 x 280.png
+/src/Kleine Kacheln - 440 x 280.psd
+
+/src/assets/img/logo34.psd
+/src/assets/img/logo128.psd
