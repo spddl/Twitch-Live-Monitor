@@ -120,7 +120,7 @@ function stableSort (array, comparator) {
 
 const headCells = [
   { id: 'name', numeric: false, disablePadding: true, label: 'Twitch Name' },
-  { id: 'followed_at', numeric: true, disablePadding: false, label: 'followed_at' }
+  { id: 'followed_at', numeric: true, disablePadding: false, label: 'followed at' }
 ]
 
 function EnhancedTableHead (props) {
