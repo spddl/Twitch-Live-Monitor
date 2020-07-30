@@ -414,7 +414,7 @@ export default function Options () { // https://material-ui.com/components/table
                 InputLabelProps={{
                   shrink: true
                 }}
-                value={state.accountnameInput}
+                value={state.accountnameInput || state.accountname}
                 onChange={handleChange}
               />
             </FormControl>
