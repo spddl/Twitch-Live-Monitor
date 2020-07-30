@@ -397,6 +397,92 @@ export default function Options () { // https://material-ui.com/components/table
     background.settingsReducer({ type: 'SET', value: { name, value } })
   }
 
+  let NotificationTable
+  if (userID !== '' && OAuth !== '' && state.accountname !== '' && rows.length === 0) {
+    NotificationTable =
+      <Grid item xs={12}>
+        <Typography variant='h4' component='h2'>
+          Try to Reload
+        </Typography>
+      </Grid>
+  } else if (rows.length > 0) {
+    NotificationTable =
+      <Grid item xs={12}>
+        <div className={classes.root}>
+          <Paper className={classes.paper}>
+            <EnhancedTableToolbar numSelected={selected.length} />
+            <TableContainer>
+              <Table
+                className={classes.table}
+                aria-labelledby='tableTitle'
+                size={'small'}
+                aria-label='enhanced table'
+              >
+                <EnhancedTableHead
+                  classes={classes}
+                  numSelected={selected.length}
+                  order={order}
+                  orderBy={orderBy}
+                  onSelectAllClick={handleSelectAllClick}
+                  onRequestSort={handleRequestSort}
+                  rowCount={rows.length}
+                />
+                <TableBody>
+                  {stableSort(rows, getComparator(order, orderBy))
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((row, index) => {
+                      const isItemSelected = isSelected(row.name)
+                      const labelId = `enhanced-table-checkbox-${index}`
+                      return (
+                        <TableRow
+                          hover
+                          onClick={event => handleClick(event, row.name)}
+                          role='checkbox'
+                          aria-checked={isItemSelected}
+                          tabIndex={-1}
+                          key={row.name}
+                          selected={isItemSelected}
+                        >
+                          <TableCell padding='checkbox'>
+                            <Checkbox
+                              checked={isItemSelected}
+                              inputProps={{ 'aria-labelledby': labelId }}
+                            />
+                          </TableCell>
+                          <TableCell
+                            component='th'
+                            id={labelId}
+                            scope='row'
+                            padding='none'
+                          >
+                            {row.name}
+                          </TableCell>
+                          <TableCell align='right'>{row.followed_at}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  {emptyRows > 0 && (
+                    <TableRow style={{ height: 33 * emptyRows }}>
+                      <TableCell colSpan={6} />
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[25, 50, 100, 200, 500]}
+              component='div'
+              count={rows.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onChangePage={handleChangePage}
+              onChangeRowsPerPage={handleChangeRowsPerPage}
+            />
+          </Paper>
+        </div>
+      </Grid >
+  }
+
   return (
     <React.Fragment>
       <CssBaseline />
@@ -451,84 +537,7 @@ export default function Options () { // https://material-ui.com/components/table
             </Button>
           </Grid>
 
-          {
-            rows.length > 0 &&
-            <Grid item xs={12}>
-              <div className={classes.root}>
-                <Paper className={classes.paper}>
-                  <EnhancedTableToolbar numSelected={selected.length} />
-                  <TableContainer>
-                    <Table
-                      className={classes.table}
-                      aria-labelledby='tableTitle'
-                      size={'small'}
-                      aria-label='enhanced table'
-                    >
-                      <EnhancedTableHead
-                        classes={classes}
-                        numSelected={selected.length}
-                        order={order}
-                        orderBy={orderBy}
-                        onSelectAllClick={handleSelectAllClick}
-                        onRequestSort={handleRequestSort}
-                        rowCount={rows.length}
-                      />
-                      <TableBody>
-                        {stableSort(rows, getComparator(order, orderBy))
-                          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                          .map((row, index) => {
-                            const isItemSelected = isSelected(row.name)
-                            const labelId = `enhanced-table-checkbox-${index}`
-
-                            return (
-                              <TableRow
-                                hover
-                                onClick={event => handleClick(event, row.name)}
-                                role='checkbox'
-                                aria-checked={isItemSelected}
-                                tabIndex={-1}
-                                key={row.name}
-                                selected={isItemSelected}
-                              >
-                                <TableCell padding='checkbox'>
-                                  <Checkbox
-                                    checked={isItemSelected}
-                                    inputProps={{ 'aria-labelledby': labelId }}
-                                  />
-                                </TableCell>
-                                <TableCell
-                                  component='th'
-                                  id={labelId}
-                                  scope='row'
-                                  padding='none'
-                                >
-                                  {row.name}
-                                </TableCell>
-                                <TableCell align='right'>{row.followed_at}</TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        {emptyRows > 0 && (
-                          <TableRow style={{ height: 33 * emptyRows }}>
-                            <TableCell colSpan={6} />
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  <TablePagination
-                    rowsPerPageOptions={[25, 50, 100, 200, 500]}
-                    component='div'
-                    count={rows.length}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onChangePage={handleChangePage}
-                    onChangeRowsPerPage={handleChangeRowsPerPage}
-                  />
-                </Paper>
-              </div>
-            </Grid>
-          }
+          {NotificationTable}
 
         </Grid >
       </Container >
