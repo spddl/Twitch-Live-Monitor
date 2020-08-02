@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-globals */
-/* global window, chrome, history, XMLHttpRequest */
+/* global chrome */
 
 import React from 'react'
 import { lighten, makeStyles, withStyles } from '@material-ui/core/styles'
@@ -37,52 +37,6 @@ const background = chrome.extension.getBackgroundPage()
 // })
 
 const clientIDApp = 's8gs9idntg25gl66k3w73y7ck02a6r'
-
-const getUserID = () => {
-  return new Promise((resolve, reject) => {
-    const { OAuth, clientID, userID, accountnameInput } = background.settingsReducer({ type: 'GETALL' })
-    console.debug('getUserID', { clientID, userID, accountnameInput })
-    if (!userID) {
-      const xhr = new XMLHttpRequest()
-      xhr.open('GET', 'https://api.twitch.tv/kraken/users?login=' + accountnameInput, true, null, null)
-      xhr.setRequestHeader('Accept', 'application/vnd.twitchtv.v5+json')
-      xhr.setRequestHeader('Authorization', 'OAuth ' + OAuth)
-      xhr.setRequestHeader('Client-ID', clientID)
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const data = JSON.parse(xhr.responseText)
-          if (data._total === 1) {
-            background.settingsReducer({ type: 'SET', value: { name: 'userID', value: data.users[0]._id } })
-            background.settingsReducer({ type: 'SET', value: { name: 'accountname', value: accountnameInput } })
-            resolve()
-          } else {
-            console.warn('not found', { data })
-            reject(new Error('not found', { data }))
-          }
-        } else {
-          console.warn(xhr.statusText, xhr.responseText)
-          reject(new Error(xhr.statusText, xhr.responseText))
-        }
-      })
-      xhr.send()
-    }
-  })
-}
-
-if (window.location.hash.indexOf('#access_token=') !== -1) {
-  const oauth = window.location.hash.replace('#access_token=', '').replace('&scope=user_read&token_type=bearer', '')
-  history.pushState({ pageID: 'options' }, 'options', '/options.html')
-  background.settingsReducer({ type: 'SET', value: { name: 'OAuth', value: oauth } })
-
-  const userID = background.settingsReducer({ type: 'GET', value: { name: 'userID' } }) || ''
-  if (!userID) {
-    getUserID().then(() => {
-      background.getInit(true)
-    })
-  } else {
-    background.getInit(true)
-  }
-}
 
 chrome.storage.sync.get('clientID', result => {
   if (result.clientID !== clientIDApp) { // https://developer.chrome.com/extensions/storage
@@ -286,22 +240,12 @@ const useStyles = makeStyles(theme => ({
   }
 }))
 
-const save = state => { //  https://material-ui.com/de/components/text-fields/#uncontrolled-vs-controlled
-  console.log('save, state', state)
-
+const save = state => {
   const OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || false
-  console.log('save', { OAuth })
   if (!OAuth) {
-    window.location = `https://id.twitch.tv/oauth2/authorize?client_id=${clientIDApp}&redirect_uri=chrome-extension://${chrome.runtime.id}/options.html&response_type=token&scope=user_read`
-  }
-
-  const userID = background.settingsReducer({ type: 'GET', value: { name: 'userID' } }) || ''
-  if (!userID) {
-    getUserID().then(() => {
-      background.getInit(true)
+    chrome.tabs.getCurrent(tab => {
+      chrome.tabs.update(tab.id, { url: `https://id.twitch.tv/oauth2/authorize?client_id=${clientIDApp}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
     })
-  } else {
-    background.getInit(true)
   }
 }
 
@@ -319,12 +263,6 @@ export default function Options () { // https://material-ui.com/components/table
     checkboxDense: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDense' } }) || false,
     checkboxTwoLines: background.settingsReducer({ type: 'GET', value: { name: 'checkboxTwoLines' } }) || false,
     checkboxDarkMode: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDarkMode' } }) || false
-    // checkboxOpenStream: background.settingsReducer({ type: 'GET', value: { name: 'checkboxOpenStream' } }) || true,
-    // checkboxShowNotifications: background.settingsReducer({ type: 'GET', value: { name: 'checkboxShowNotifications' } }) || true,
-    // updateRate: background.settingsReducer({ type: 'GET', value: { name: 'updateRate' } }) || 2000,
-    // checkboxVodcasts: background.settingsReducer({ type: 'GET', value: { name: 'checkboxVodcasts' } }) || true,
-    // firstLine: background.settingsReducer({ type: 'GET', value: { name: 'firstLine' } }) || '${channel.name}',
-    // secondLine: background.settingsReducer({ type: 'GET', value: { name: 'secondLine' } }) || 'viewer: ${channel.viewer_count}, uptime: ${timeAgo(channel.started_at, now)}'
   })
 
   const OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || ''

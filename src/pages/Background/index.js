@@ -3,6 +3,58 @@
 import '../../assets/img/icon-34.png'
 import '../../assets/img/icon-128.png'
 
+const re = /^https:\/\/github.com\/spddl\/Twitch-Live-Monitor#access_token=(.*?)&scope=user_read&token_type=bearer$/
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onCreated
+  if (changeInfo.status === 'loading' && changeInfo.url) {
+    const urlRegex = changeInfo.url.match(re)
+    if (urlRegex !== null) {
+      window.settingsReducer({ type: 'SET', value: { name: 'OAuth', value: urlRegex[1] } })
+      const userID = window.settingsReducer({ type: 'GET', value: { name: 'userID' } }) || ''
+      if (!userID) {
+        getUserID().then(() => {
+          window.getInit(true)
+          chrome.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
+        })
+      } else {
+        window.getInit(true)
+        chrome.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
+      }
+    }
+  }
+})
+
+const getUserID = () => {
+  return new Promise((resolve, reject) => {
+    const { OAuth, clientID, userID, accountnameInput } = window.settingsReducer({ type: 'GETALL' })
+    console.debug('getUserID', { clientID, userID, accountnameInput })
+    if (!userID) {
+      const xhr = new XMLHttpRequest()
+      xhr.open('GET', 'https://api.twitch.tv/kraken/users?login=' + accountnameInput, true, null, null)
+      xhr.setRequestHeader('Accept', 'application/vnd.twitchtv.v5+json')
+      xhr.setRequestHeader('Authorization', 'OAuth ' + OAuth)
+      xhr.setRequestHeader('Client-ID', clientID)
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const data = JSON.parse(xhr.responseText)
+          if (data._total === 1) {
+            window.settingsReducer({ type: 'SET', value: { name: 'userID', value: data.users[0]._id } })
+            window.settingsReducer({ type: 'SET', value: { name: 'accountname', value: accountnameInput } })
+            resolve()
+          } else {
+            console.warn('not found', { data })
+            reject(new Error('not found', { data }))
+          }
+        } else {
+          console.warn(xhr.statusText, xhr.responseText)
+          reject(new Error(xhr.statusText, xhr.responseText))
+        }
+      })
+      xhr.send()
+    }
+  })
+}
+
 let ws
 
 const UPDATE_INTERVAL = 60 * 1000 * 2 // 2 minutes
@@ -206,8 +258,8 @@ const request = ({ url, clientID, OAuth }) => {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText))
       } else {
-        console.warn(xhr.statusText, xhr.responseText, 'oAuth', OAuth)
-        window.alert(xhr.responseText)
+        console.warn(url, xhr.statusText, xhr.responseText, 'oAuth', OAuth)
+        window.alert(url, xhr.responseText)
         reject(xhr.statusText)
       }
     })

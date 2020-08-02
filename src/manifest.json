@@ -32,9 +32,9 @@
   "homepage_url": "https://github.com/spddl",
   "options_page": "options.html",
   "permissions": [
-    "https://api.twitch.tv/",
-    "https://id.twitch.tv/",
+    "https://*.twitch.tv/",
     "https://twitch.tv/",
+    "tabs",
     "storage",
     "notifications"
   ],
