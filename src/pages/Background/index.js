@@ -5,7 +5,7 @@ import '../../assets/img/icon-128.png'
 
 const re = /^https:\/\/github.com\/spddl\/Twitch-Live-Monitor#access_token=(.*?)&scope=user_read&token_type=bearer$/
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onCreated
+const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onCreated
   if (changeInfo.status === 'loading' && changeInfo.url) {
     const urlRegex = changeInfo.url.match(re)
     if (urlRegex !== null) {
@@ -15,14 +15,20 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => { // https://devel
         getUserID().then(() => {
           window.getInit(true)
           chrome.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
+          chrome.tabs.onCreated.removeListener(OAuthListener)
         })
       } else {
         window.getInit(true)
         chrome.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
+        chrome.tabs.onCreated.removeListener(OAuthListener)
       }
     }
   }
-})
+}
+
+window.createOAuthListener = () => {
+  chrome.tabs.onUpdated.addListener(OAuthListener)
+}
 
 const getUserID = () => {
   return new Promise((resolve, reject) => {
@@ -248,7 +254,7 @@ window.openStream = channelName => {
 
 const request = ({ url, clientID, OAuth }) => {
   return new Promise((resolve, reject) => {
-    console.log({ url, clientID, OAuth })
+    // console.debug({ url, clientID, OAuth })
     const xhr = new XMLHttpRequest()
     xhr.open('GET', url + ((/\?/).test(url) ? '&' : '?') + (new Date()).getTime()) // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest#Bypassing_the_cache
     xhr.setRequestHeader('Accept', 'application/vnd.twitchtv.v5+json')

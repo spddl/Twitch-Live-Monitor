@@ -238,6 +238,7 @@ const useStyles = makeStyles(theme => ({
 const save = state => {
   const OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || false
   if (!OAuth) {
+    background.createOAuthListener()
     chrome.tabs.getCurrent(tab => {
       chrome.tabs.update(tab.id, { url: `https://id.twitch.tv/oauth2/authorize?client_id=${clientIDApp}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
     })
