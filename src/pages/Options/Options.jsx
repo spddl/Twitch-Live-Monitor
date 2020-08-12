@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-globals */
-/* global chrome */
+/* global chrome, browser */
 
 import React from 'react'
 import { lighten, makeStyles, withStyles } from '@material-ui/core/styles'
@@ -26,7 +26,10 @@ import Toolbar from '@material-ui/core/Toolbar'
 import Typography from '@material-ui/core/Typography'
 import Paper from '@material-ui/core/Paper'
 
-const background = chrome.extension.getBackgroundPage()
+const isFirefox = typeof browser !== 'undefined'
+const browserAPI = isFirefox ? browser : chrome
+
+const background = browserAPI.extension.getBackgroundPage()
 
 // chrome.storage.sync.clear(success => {
 //   console.debug('chrome.storage.sync.clear', success)
@@ -38,7 +41,7 @@ const background = chrome.extension.getBackgroundPage()
 
 const clientIDApp = 's8gs9idntg25gl66k3w73y7ck02a6r'
 
-chrome.storage.sync.get('clientID', result => {
+browserAPI.storage.sync.get('clientID', result => {
   if (result.clientID !== clientIDApp) { // https://developer.chrome.com/extensions/storage
     background.settingsReducer({ type: 'SET', value: { name: 'clientID', value: clientIDApp } })
   }
@@ -46,7 +49,7 @@ chrome.storage.sync.get('clientID', result => {
 
 const rows = background.getAllChannels()
 
-function descendingComparator (a, b, orderBy) {
+function descendingComparator(a, b, orderBy) {
   if (b[orderBy] < a[orderBy]) {
     return -1
   }
@@ -56,13 +59,13 @@ function descendingComparator (a, b, orderBy) {
   return 0
 }
 
-function getComparator (order, orderBy) {
+function getComparator(order, orderBy) {
   return order === 'desc'
     ? (a, b) => descendingComparator(a, b, orderBy)
     : (a, b) => -descendingComparator(a, b, orderBy)
 }
 
-function stableSort (array, comparator) {
+function stableSort(array, comparator) {
   const stabilizedThis = array.map((el, index) => [el, index])
   stabilizedThis.sort((a, b) => {
     const order = comparator(a[0], b[0])
@@ -77,7 +80,7 @@ const headCells = [
   { id: 'followed_at', numeric: true, disablePadding: false, label: 'followed at' }
 ]
 
-function EnhancedTableHead (props) {
+function EnhancedTableHead(props) {
   const {
     classes,
     onSelectAllClick,
@@ -188,15 +191,15 @@ const EnhancedTableToolbar = props => {
           {numSelected} selected
         </Typography>
       ) : (
-        <Typography
-          className={classes.title}
-          variant='h6'
-          id='tableTitle'
-          component='div'
-        >
+          <Typography
+            className={classes.title}
+            variant='h6'
+            id='tableTitle'
+            component='div'
+          >
             Notification when these channels go live:
-        </Typography>
-      )}
+          </Typography>
+        )}
     </Toolbar>
   )
 }
@@ -239,13 +242,13 @@ const save = state => {
   const OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || false
   if (!OAuth) {
     background.createOAuthListener()
-    chrome.tabs.getCurrent(tab => {
-      chrome.tabs.update(tab.id, { url: `https://id.twitch.tv/oauth2/authorize?client_id=${clientIDApp}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
+    browserAPI.tabs.getCurrent(tab => {
+      browserAPI.tabs.update(tab.id, { url: `https://id.twitch.tv/oauth2/authorize?client_id=${clientIDApp}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
     })
   }
 }
 
-export default function Options () { // https://material-ui.com/components/tables/
+export default function Options() { // https://material-ui.com/components/tables/
   const classes = useStyles()
 
   const [order, setOrder] = React.useState('desc')

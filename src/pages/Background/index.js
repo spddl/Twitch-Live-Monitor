@@ -1,10 +1,14 @@
-/* global window, chrome, WebSocket, FileReader, XMLHttpRequest */
+/* global window, chrome, browser, WebSocket, FileReader, XMLHttpRequest */
 
 import '../../assets/img/icon-34.png'
 import '../../assets/img/icon-128.png'
 
 const re = /^https:\/\/github.com\/spddl\/Twitch-Live-Monitor#access_token=(.*?)&scope=user_read&token_type=bearer$/
 
+const isFirefox = typeof browser !== 'undefined'
+const browserAPI = isFirefox ? browser : chrome
+
+console.log('isFirefox', isFirefox)
 const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onCreated
   if (changeInfo.status === 'loading' && changeInfo.url) {
     const urlRegex = changeInfo.url.match(re)
@@ -14,20 +18,30 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
       if (!userID) {
         getUserID().then(() => {
           window.getInit(true)
-          chrome.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
-          chrome.tabs.onCreated.removeListener(OAuthListener)
+          if (isFirefox) {
+            browserAPI.tabs.update(tab.id, { url: browser.runtime.getManifest().options_ui.page })
+            browserAPI.tabs.onCreated.removeListener(OAuthListener)
+          } else {
+            browserAPI.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
+            browserAPI.tabs.onCreated.removeListener(OAuthListener)
+          }
         })
       } else {
         window.getInit(true)
-        chrome.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
-        chrome.tabs.onCreated.removeListener(OAuthListener)
+        if (isFirefox) {
+          browserAPI.tabs.update(tab.id, { url: browser.runtime.getManifest().options_ui.page })
+          browserAPI.tabs.onCreated.removeListener(OAuthListener)
+        } else {
+          browserAPI.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
+          browserAPI.tabs.onCreated.removeListener(OAuthListener)
+        }
       }
     }
   }
 }
 
 window.createOAuthListener = () => {
-  chrome.tabs.onUpdated.addListener(OAuthListener)
+  browserAPI.tabs.onUpdated.addListener(OAuthListener)
 }
 
 const getUserID = () => {
@@ -70,7 +84,7 @@ const GameIDList = {}
 let allChannels = []
 
 // Source: https://www.thepolyglotdeveloper.com/2015/03/create-a-random-nonce-string-using-javascript/
-function nonce (length) {
+function nonce(length) {
   let text = ''
   const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
   for (var i = 0; i < length; i++) {
@@ -82,7 +96,7 @@ function nonce (length) {
 const heartbeat = () => { ws.send('{"type":"PING"}') }
 
 // Clients can listen on up to 50 topics per connection. Trying to listen on more topics will result in an error message.
-function listen (topics) { // https://dev.twitch.tv/docs/pubsub#topics
+function listen(topics) { // https://dev.twitch.tv/docs/pubsub#topics
   console.debug('listen', topics, ws.readyState)
   if (ws.readyState === 1) {
     const message = {
@@ -101,7 +115,7 @@ function listen (topics) { // https://dev.twitch.tv/docs/pubsub#topics
   }
 }
 
-function connect () {
+function connect() {
   return new Promise((resolve, reject) => {
     const heartbeatInterval = 1000 * 60 // ms between PING's
     const reconnectInterval = 1000 * 3 // ms to wait before reconnect
@@ -193,7 +207,7 @@ window.getInit = async (channel = false) => {
     await getChannels()
   }
   await checkStatus(false)
-  chrome.browserAction.setBadgeText({ text: LiveChannelsArray.length.toString() })
+  browserAPI.browserAction.setBadgeText({ text: LiveChannelsArray.length.toString() })
   await getGameIDList()
 }
 
@@ -201,13 +215,13 @@ window.getStreams = () => LiveChannels
 window.setPriorityChannelReducer = value => {
   windowSettings.PriorityChannels = value
 
-  chrome.storage.sync.set({ PriorityChannels: windowSettings.PriorityChannels }, () => {
+  browserAPI.storage.sync.set({ PriorityChannels: windowSettings.PriorityChannels }, () => {
     // console.debug('setPriorityChannelReducer saved', { PriorityChannels: windowSettings.PriorityChannels })
   })
 }
 
 let windowSettings = {}
-chrome.storage.sync.get(null, result => {
+browserAPI.storage.sync.get(null, result => {
   windowSettings = result
 })
 
@@ -215,7 +229,7 @@ window.settingsReducer = ({ type, value }) => {
   switch (type) {
     case 'SET':
       windowSettings[value.name] = value.value
-      chrome.storage.sync.set({ [value.name]: value.value }, () => {
+      browserAPI.storage.sync.set({ [value.name]: value.value }, () => {
         // console.debug('saved', { [value.name]: value.value })
       })
       break
@@ -224,14 +238,14 @@ window.settingsReducer = ({ type, value }) => {
     case 'GETALL':
       return windowSettings
     case 'CLEAR':
-      chrome.browserAction.setBadgeText({ text: '0' })
+      browserAPI.browserAction.setBadgeText({ text: '0' })
       windowSettings = {}
 
       LiveChannels = {}
       LiveChannelsArray = []
       allChannels = []
 
-      chrome.storage.sync.clear(success => {
+      browserAPI.storage.sync.clear(success => {
         window.alert('Settings deleted')
       })
       return windowSettings
@@ -246,9 +260,17 @@ window.getGameIDList = () => GameIDList
 
 window.openStream = channelName => {
   if (channelName === 'Options') {
-    chrome.tabs.create({ url: `chrome-extension://${chrome.runtime.id}/options.html` })
+    if (isFirefox) {
+      browserAPI.runtime.openOptionsPage()
+    } else {
+      browserAPI.tabs.create({ url: `chrome-extension://${chrome.runtime.id}/options.html` })
+    }
   } else {
-    chrome.tabs.create({ url: 'https://www.twitch.tv/' + channelName.replace(/\s/g, '') })
+    browserAPI.tabs.create({ url: 'https://www.twitch.tv/' + channelName.replace(/\s/g, '') })
+  }
+
+  if (isFirefox) {
+    window.close() // dont work
   }
 }
 
@@ -294,7 +316,7 @@ const toDataURL = url => {
 }
 
 let tempGameIDList = []
-function checkStatus (notify = true) {
+function checkStatus(notify = true) {
   return new Promise(async (resolve, reject) => {
     if (allChannels.length === 0) {
       return
@@ -376,7 +398,7 @@ function checkStatus (notify = true) {
   })
 }
 
-function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht werden sollte auch gelöscht werden
+function getGameIDList() { // TODO: Games in der Gamelist die nicht gebraucht werden sollte auch gelöscht werden
   return new Promise(async (resolve, reject) => {
     if (tempGameIDList.length) {
       // https://dev.twitch.tv/docs/api/reference#get-games
@@ -400,9 +422,9 @@ function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht w
   })
 }
 
-function getChannels () {
+function getChannels() {
   return new Promise((resolve, reject) => {
-    chrome.storage.sync.get(['clientID', 'OAuth', 'userID'], async result => {
+    browserAPI.storage.sync.get(['clientID', 'OAuth', 'userID'], async result => {
       if (result.clientID === '' || !result.OAuth || result.OAuth === '' || !result.userID || result.userID === '') {
         console.debug("result.clientID === '' || result.OAuth === '' || result.userID === ''")
         return
@@ -444,23 +466,43 @@ function getChannels () {
   })
 }
 
-function pushNotification ({ channel, title, message, iconUrl }) {
-  chrome.notifications.create(channel, {// https://developer.chrome.com/apps/notifications#type-NotificationOptions
-    type: 'basic',
-    title,
-    priority: 0,
-    iconUrl,
-    message,
-    contextMessage: 'Twitch Live Monitor',
-    buttons: [
-      { title: 'Open' }
-    ]
-  })
+function pushNotification({ channel, title, message, iconUrl }) {
+  if (isFirefox) {
+    browserAPI.notifications.create(channel, { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/notifications/create
+      type: 'basic',
+      title,
+      priority: 0,
+      iconUrl,
+      message,
+      contextMessage: 'Twitch Live Monitor'
+      // buttons: [ // Error: Type error for parameter options (Property "buttons" is unsupported by Firefox) for notifications.create.
+      //   { title: 'Open' }
+      // ]
+    })
+  } else {
+    browserAPI.notifications.create(channel, {// https://developer.chrome.com/apps/notifications#type-NotificationOptions
+      type: 'basic',
+      title,
+      priority: 0,
+      iconUrl,
+      message,
+      contextMessage: 'Twitch Live Monitor',
+      buttons: [
+        { title: 'Open' }
+      ]
+    })
+  }
 }
 
-chrome.notifications.onButtonClicked.addListener(notificationId => {
-  chrome.tabs.create({ url: 'https://www.twitch.tv/' + notificationId })
-})
+if (isFirefox) { // without Buttons
+  browserAPI.notifications.onClicked.addListener(notificationId => {
+    browserAPI.tabs.create({ url: 'https://www.twitch.tv/' + notificationId })
+  })
+} else {
+  browserAPI.notifications.onButtonClicked.addListener(notificationId => {
+    browserAPI.tabs.create({ url: 'https://www.twitch.tv/' + notificationId })
+  })
+}
 
 ; (async () => {
   window.getInit(true)
@@ -468,9 +510,9 @@ chrome.notifications.onButtonClicked.addListener(notificationId => {
     window.getInit()
   }, UPDATE_INTERVAL)
 
-  connect().then(() => {
-    if (windowSettings && windowSettings.PriorityChannels && windowSettings.PriorityChannels.length < 51) {
+  if (windowSettings && windowSettings.PriorityChannels && windowSettings.PriorityChannels.length < 51) {
+    connect().then(() => {
       listen(windowSettings.PriorityChannels.map(chan => `video-playback.${chan.toLowerCase()}`))
-    }
-  })
+    })
+  }
 })()

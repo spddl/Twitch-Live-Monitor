@@ -8,9 +8,10 @@
     "url": "https://github.com/lxieyang/chrome-extension-boilerplate-react.git"
   },
   "scripts": {
-    "build": "node utils/build.js",
     "start": "node utils/webserver.js",
-    "prettier": "prettier --write '**/*.{js,jsx,css,html}'"
+    "build": "node utils/build.js",
+    "start-wp": "SET NODE_ENV=development&& webpack --config webpack.config.js --watch",
+    "build-wp": "SET NODE_ENV=production&& webpack --config webpack.config.js"
   },
   "dependencies": {
     "@hot-loader/react-dom": "^16.13.0",

@@ -1,0 +1,54 @@
+{
+  "manifest_version": 2,
+  "name": "Twitch Live Monitor",
+  "short_name": "Twitch Live Monitor",
+  "version": "0.0.12",
+  "description": "Twitch TV extension to show the priority active favorite channels of as a notification to you.",
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon-34.png"
+  },
+  "background": {
+    "persistent": true,
+    "page": "background.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://api.twitch.tv/*"
+      ],
+      "js": [
+        "contentScript.bundle.js"
+      ],
+      "css": [
+        "content.styles.css"
+      ]
+    }
+  ],
+  "homepage_url": "https://github.com/spddl",
+  "permissions": [
+    "https://*.twitch.tv/",
+    "https://twitch.tv/",
+    "tabs",
+    "storage",
+    "notifications"
+  ],
+  "web_accessible_resources": [
+    "content.styles.css",
+    "icon-128.png",
+    "icon-34.png"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "spddlhh@gmail.com"
+    }
+  }
+}
