@@ -16,5 +16,4 @@ secrets.*.js
 /src/Kleine Kacheln - 440 x 280.png
 /src/Kleine Kacheln - 440 x 280.psd
 
-/src/assets/img/logo34.psd
-/src/assets/img/logo128.psd
+/src/assets/img/*.psd

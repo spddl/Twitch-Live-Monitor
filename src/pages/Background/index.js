@@ -1,7 +1,7 @@
 /* global window, chrome, browser, WebSocket, FileReader, XMLHttpRequest */
 
-import '../../assets/img/icon-34.png'
-import '../../assets/img/icon-128.png'
+import '../../assets/img/tw128px.png'
+import '../../assets/img/bw128px.png'
 
 const re = /^https:\/\/github.com\/spddl\/Twitch-Live-Monitor#access_token=(.*?)&scope=user_read&token_type=bearer$/
 
@@ -505,6 +505,9 @@ if (isFirefox) { // without Buttons
 }
 
 ; (async () => {
+  browserAPI.browserAction.setBadgeBackgroundColor({ color: '#9146FF' }) // https://brand.twitch.tv/
+  if (isFirefox) browserAPI.browserAction.setBadgeTextColor({ color: '#f0f0f0' })
+
   window.getInit(true)
   window.setInterval(async () => {
     window.getInit()

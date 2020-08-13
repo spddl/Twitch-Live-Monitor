@@ -14,10 +14,6 @@ const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
 
 const background = browserAPI.extension.getBackgroundPage()
-// const background = isFirefox ? browser.extension.getBackgroundPage() : chrome.extension.getBackgroundPage()
-// const background = chrome.extension.getBackgroundPage()
-// const background = browser.extension.getBackgroundPage()
-console.log(background)
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -72,7 +68,7 @@ const useStyles = makeStyles(theme => ({
 }))
 
 const zeroPad2 = num => num < 10 ? '0' + num : num
-function timeAgo(timeStamp, now) {
+function timeAgo (timeStamp, now) {
   const StartedAt = new Date(timeStamp).getTime()
   const difference = now - StartedAt
   const date = new Date(difference)
@@ -92,7 +88,7 @@ function timeAgo(timeStamp, now) {
   }
 }
 
-export default function Popup() {
+export default function Popup () {
   const classes = useStyles()
 
   const [pressed, setPressed] = React.useState([])

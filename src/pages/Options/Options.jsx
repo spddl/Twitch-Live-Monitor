@@ -49,7 +49,7 @@ browserAPI.storage.sync.get('clientID', result => {
 
 const rows = background.getAllChannels()
 
-function descendingComparator(a, b, orderBy) {
+function descendingComparator (a, b, orderBy) {
   if (b[orderBy] < a[orderBy]) {
     return -1
   }
@@ -59,13 +59,13 @@ function descendingComparator(a, b, orderBy) {
   return 0
 }
 
-function getComparator(order, orderBy) {
+function getComparator (order, orderBy) {
   return order === 'desc'
     ? (a, b) => descendingComparator(a, b, orderBy)
     : (a, b) => -descendingComparator(a, b, orderBy)
 }
 
-function stableSort(array, comparator) {
+function stableSort (array, comparator) {
   const stabilizedThis = array.map((el, index) => [el, index])
   stabilizedThis.sort((a, b) => {
     const order = comparator(a[0], b[0])
@@ -80,7 +80,7 @@ const headCells = [
   { id: 'followed_at', numeric: true, disablePadding: false, label: 'followed at' }
 ]
 
-function EnhancedTableHead(props) {
+function EnhancedTableHead (props) {
   const {
     classes,
     onSelectAllClick,
@@ -191,15 +191,15 @@ const EnhancedTableToolbar = props => {
           {numSelected} selected
         </Typography>
       ) : (
-          <Typography
-            className={classes.title}
-            variant='h6'
-            id='tableTitle'
-            component='div'
-          >
+        <Typography
+          className={classes.title}
+          variant='h6'
+          id='tableTitle'
+          component='div'
+        >
             Notification when these channels go live:
-          </Typography>
-        )}
+        </Typography>
+      )}
     </Toolbar>
   )
 }
@@ -248,7 +248,7 @@ const save = state => {
   }
 }
 
-export default function Options() { // https://material-ui.com/components/tables/
+export default function Options () { // https://material-ui.com/components/tables/
   const classes = useStyles()
 
   const [order, setOrder] = React.useState('desc')
