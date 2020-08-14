@@ -338,10 +338,10 @@ export default function Options () { // https://material-ui.com/components/table
   if (userID !== '' && OAuth !== '' && state.accountname !== '' && rows.length === 0) {
     NotificationTable =
       <Grid item xs={12}>
-        <Typography variant='h4' component='h2'>
+        <Typography variant='h4' component='h2' onClick={window.location.reload(false)}>
           Try to Reload
         </Typography>
-      </Grid>
+      </Grid >
   } else if (rows.length > 0) {
     NotificationTable =
       <Grid item xs={12}>
@@ -425,6 +425,7 @@ export default function Options () { // https://material-ui.com/components/table
       <CssBaseline />
       <Container fixed>
         <Grid container spacing={3}>
+
           <Grid item xs={12} lg={12}>
             <FormControl fullWidth>
               <TextField
@@ -475,7 +476,6 @@ export default function Options () { // https://material-ui.com/components/table
           </Grid>
 
           {NotificationTable}
-
         </Grid >
       </Container >
     </React.Fragment >
