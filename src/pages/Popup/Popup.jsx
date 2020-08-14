@@ -93,9 +93,7 @@ export default function Popup () {
 
   const [pressed, setPressed] = React.useState([])
 
-  const dense = background.settingsReducer({ type: 'GET', value: { name: 'checkboxDense' } }) || false
-  const secondary = background.settingsReducer({ type: 'GET', value: { name: 'checkboxTwoLines' } }) || false
-  const darkmode = background.settingsReducer({ type: 'GET', value: { name: 'checkboxDarkMode' } }) || false
+  const { checkboxDense, checkboxTwoLines, checkboxDarkMode } = background.settingsReducer({ type: 'GETALL' }) || {}
 
   const streams = background.getStreams()
 
@@ -171,7 +169,7 @@ export default function Popup () {
           />
         </div>
       }
-      <List className={classes.root + ' ' + (darkmode ? 'DarkMode' : 'BrightMode')} subheader={<li />} dense={dense} >
+      <List className={classes.root + ' ' + ((checkboxDarkMode || false) ? 'DarkMode' : 'BrightMode')} subheader={<li />} dense={checkboxDense || false} >
         {viewData.map((channelName, index) => (
           <li key={`section-${index}`} className={classes.listSection}>
             <ul className={classes.ul}>
@@ -180,7 +178,8 @@ export default function Popup () {
                 <ListItem button key={`item-${index}-${channel.name}`}>
                   <ListItemText
                     primary={channel.name}
-                    secondary={secondary && channel.name !== 'Options' ? `viewer: ${channel.viewer_count}, uptime: ${timeAgo(channel.started_at, now)}` : null}
+                    // TODO: Options nur anzeigen wenn es kein OAuth key und co gibt
+                    secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? `viewer: ${channel.viewer_count}, uptime: ${timeAgo(channel.started_at, now)}` : null}
                     onMouseDown={() => background.openStream(channel.name)}
                   />
                 </ListItem>
