@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Twitch Live Monitor",
   "short_name": "Twitch Live Monitor",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Twitch TV extension to show the priority active favorite channels of as a notification to you.",
   "icons": {
     "128": "tw128px.png"
