@@ -14,6 +14,6 @@ secrets.*.js
 .vscode
 
 /src/Kleine Kacheln - 440 x 280.png
-/src/Kleine Kacheln - 440 x 280.psd
+/src/*.psd
 
 /src/assets/img/*.psd
