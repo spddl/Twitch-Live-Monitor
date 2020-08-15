@@ -1,4 +1,4 @@
-/* global chrome, browser */
+/* global chrome, browser, window */
 
 import React from 'react'
 import { makeStyles } from '@material-ui/core/styles'
@@ -178,9 +178,8 @@ export default function Popup () {
                 <ListItem button key={`item-${index}-${channel.name}`}>
                   <ListItemText
                     primary={channel.name}
-                    // TODO: Options nur anzeigen wenn es kein OAuth key und co gibt
                     secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? `viewer: ${channel.viewer_count}, uptime: ${timeAgo(channel.started_at, now)}` : null}
-                    onMouseDown={() => background.openStream(channel.name)}
+                    onMouseDown={() => { background.openStream(channel.name); window.close() }}
                   />
                 </ListItem>
               ))}
