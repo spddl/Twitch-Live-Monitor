@@ -84,7 +84,7 @@ const GameIDList = {}
 let allChannels = []
 
 // Source: https://www.thepolyglotdeveloper.com/2015/03/create-a-random-nonce-string-using-javascript/
-function nonce(length) {
+function nonce (length) {
   let text = ''
   const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
   for (var i = 0; i < length; i++) {
@@ -96,7 +96,7 @@ function nonce(length) {
 const heartbeat = () => { ws.send('{"type":"PING"}') }
 
 // Clients can listen on up to 50 topics per connection. Trying to listen on more topics will result in an error message.
-function listen(topics) { // https://dev.twitch.tv/docs/pubsub#topics
+function listen (topics) { // https://dev.twitch.tv/docs/pubsub#topics
   console.debug('listen', topics, ws.readyState)
   if (ws.readyState === 1) {
     const message = {
@@ -115,7 +115,7 @@ function listen(topics) { // https://dev.twitch.tv/docs/pubsub#topics
   }
 }
 
-function connect() {
+function connect () {
   return new Promise((resolve, reject) => {
     const heartbeatInterval = 1000 * 60 // ms between PING's
     const reconnectInterval = 1000 * 3 // ms to wait before reconnect
@@ -268,10 +268,6 @@ window.openStream = channelName => {
   } else {
     browserAPI.tabs.create({ url: 'https://www.twitch.tv/' + channelName.replace(/\s/g, '') })
   }
-
-  if (isFirefox) {
-    window.close() // dont work
-  }
 }
 
 const request = ({ url, clientID, OAuth }) => {
@@ -316,7 +312,7 @@ const toDataURL = url => {
 }
 
 let tempGameIDList = []
-function checkStatus(notify = true) {
+function checkStatus (notify = true) {
   return new Promise(async (resolve, reject) => {
     if (allChannels.length === 0) {
       return
@@ -398,7 +394,7 @@ function checkStatus(notify = true) {
   })
 }
 
-function getGameIDList() { // TODO: Games in der Gamelist die nicht gebraucht werden sollte auch gelöscht werden
+function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht werden sollte auch gelöscht werden
   return new Promise(async (resolve, reject) => {
     if (tempGameIDList.length) {
       // https://dev.twitch.tv/docs/api/reference#get-games
@@ -422,7 +418,7 @@ function getGameIDList() { // TODO: Games in der Gamelist die nicht gebraucht we
   })
 }
 
-function getChannels() {
+function getChannels () {
   return new Promise((resolve, reject) => {
     browserAPI.storage.sync.get(['clientID', 'OAuth', 'userID'], async result => {
       if (result.clientID === '' || !result.OAuth || result.OAuth === '' || !result.userID || result.userID === '') {
@@ -466,7 +462,7 @@ function getChannels() {
   })
 }
 
-function pushNotification({ channel, title, message, iconUrl }) {
+function pushNotification ({ channel, title, message, iconUrl }) {
   if (isFirefox) {
     browserAPI.notifications.create(channel, { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/notifications/create
       type: 'basic',
