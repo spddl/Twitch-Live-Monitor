@@ -20,21 +20,19 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
           window.getInit(true)
           if (isFirefox) {
             browserAPI.tabs.update(tab.id, { url: browser.runtime.getManifest().options_ui.page })
-            browserAPI.tabs.onCreated.removeListener(OAuthListener)
           } else {
             browserAPI.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
-            browserAPI.tabs.onCreated.removeListener(OAuthListener)
           }
+          browserAPI.tabs.onCreated.removeListener(OAuthListener)
         })
       } else {
         window.getInit(true)
         if (isFirefox) {
           browserAPI.tabs.update(tab.id, { url: browser.runtime.getManifest().options_ui.page })
-          browserAPI.tabs.onCreated.removeListener(OAuthListener)
         } else {
           browserAPI.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
-          browserAPI.tabs.onCreated.removeListener(OAuthListener)
         }
+        browserAPI.tabs.onCreated.removeListener(OAuthListener)
       }
     }
   }
@@ -172,6 +170,7 @@ function connect () {
             }
           } else if (msg.type === 'stream-down') {
             // TODO Wieder entfernen
+            console.debug('// Wieder entfernen', msg)
           }
           break
 
@@ -394,7 +393,7 @@ function checkStatus (notify = true) {
   })
 }
 
-function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht werden sollte auch gelöscht werden
+function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht werden sollten auch gelöscht werden
   return new Promise(async (resolve, reject) => {
     if (tempGameIDList.length) {
       // https://dev.twitch.tv/docs/api/reference#get-games
