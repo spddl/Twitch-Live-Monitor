@@ -9,6 +9,8 @@ const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
 
 console.log('isFirefox', isFirefox)
+let windowSettings = {}
+
 const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onCreated
   if (changeInfo.status === 'loading' && changeInfo.url) {
     const urlRegex = changeInfo.url.match(re)
@@ -219,11 +221,6 @@ window.setPriorityChannelReducer = value => {
   })
 }
 
-let windowSettings = {}
-browserAPI.storage.sync.get(null, result => {
-  windowSettings = result
-})
-
 window.settingsReducer = ({ type, value }) => {
   switch (type) {
     case 'SET':
@@ -244,7 +241,7 @@ window.settingsReducer = ({ type, value }) => {
       LiveChannelsArray = []
       allChannels = []
 
-      browserAPI.storage.sync.clear(success => {
+      browserAPI.storage.sync.clear(() => {
         window.alert('Settings deleted')
       })
       return windowSettings
@@ -404,7 +401,6 @@ function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht w
         OAuth: 'Bearer ' + windowSettings.OAuth
       }).then(result => {
         result.data.forEach(ele => {
-          // GameIDList.set(ele.id, ele.name) // TODO: delete after time... e.g. LRU Cache
           GameIDList[ele.id] = ele.name
         })
       }, reason => {
@@ -419,7 +415,7 @@ function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht w
 
 function getChannels () {
   return new Promise((resolve, reject) => {
-    browserAPI.storage.sync.get(['clientID', 'OAuth', 'userID'], async result => {
+    browserAPI.storage.sync.get(['clientID', 'OAuth', 'userID'], async result => { // TODO: nötig?
       if (result.clientID === '' || !result.OAuth || result.OAuth === '' || !result.userID || result.userID === '') {
         console.debug("result.clientID === '' || result.OAuth === '' || result.userID === ''")
         return
@@ -499,18 +495,22 @@ if (isFirefox) { // without Buttons
   })
 }
 
-; (async () => {
+;(async () => {
   browserAPI.browserAction.setBadgeBackgroundColor({ color: '#9146FF' }) // https://brand.twitch.tv/
   if (isFirefox) browserAPI.browserAction.setBadgeTextColor({ color: '#f0f0f0' })
 
-  window.getInit(true)
-  window.setInterval(async () => {
-    window.getInit()
-  }, UPDATE_INTERVAL)
+  browserAPI.storage.sync.get(null, result => { // init Data
+    windowSettings = result
 
-  if (windowSettings && windowSettings.PriorityChannels && windowSettings.PriorityChannels.length < 51) {
-    connect().then(() => {
-      listen(windowSettings.PriorityChannels.map(chan => `video-playback.${chan.toLowerCase()}`))
-    })
-  }
+    window.getInit(true)
+    window.setInterval(async () => {
+      window.getInit()
+    }, UPDATE_INTERVAL)
+
+    if (windowSettings && windowSettings.PriorityChannels && windowSettings.PriorityChannels.length < 51) {
+      connect().then(() => {
+        listen(windowSettings.PriorityChannels.map(chan => `video-playback.${chan.toLowerCase()}`))
+      })
+    }
+  })
 })()
