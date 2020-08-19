@@ -47,7 +47,7 @@ browserAPI.storage.sync.get('clientID', result => {
   }
 })
 
-const rows = background.getAllChannels()
+const allRows = background.getAllChannels()
 
 function descendingComparator (a, b, orderBy) {
   if (b[orderBy] < a[orderBy]) {
@@ -222,6 +222,11 @@ const useStyles = makeStyles(theme => ({
     width: '100%',
     marginBottom: theme.spacing(2)
   },
+
+  searchBar: {
+    margin: theme.spacing(1)
+  },
+
   table: {
     minWidth: 750
   },
@@ -263,6 +268,15 @@ export default function Options () { // https://material-ui.com/components/table
     checkboxTwoLines: background.settingsReducer({ type: 'GET', value: { name: 'checkboxTwoLines' } }) || false,
     checkboxDarkMode: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDarkMode' } }) || false
   })
+
+  const [filter, setfilter] = React.useState('')
+  const lowercasedFilter = filter.toLowerCase()
+  let rows
+  if (lowercasedFilter === '') {
+    rows = allRows
+  } else {
+    rows = allRows.filter(item => item.nametoLowerCase.indexOf(lowercasedFilter) !== -1)
+  }
 
   const OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || ''
   const userID = background.settingsReducer({ type: 'GET', value: { name: 'userID' } }) || ''
@@ -317,6 +331,9 @@ export default function Options () { // https://material-ui.com/components/table
   const isSelected = name => selected.indexOf(name) !== -1
 
   const emptyRows = rowsPerPage - Math.min(rowsPerPage, rows.length - page * rowsPerPage)
+  if (page !== 0 && rowsPerPage > rows.length) {
+    setPage(0)
+  }
 
   const handleChange = (event) => {
     event.persist()
@@ -335,18 +352,19 @@ export default function Options () { // https://material-ui.com/components/table
   }
 
   let NotificationTable
-  if (userID !== '' && OAuth !== '' && state.accountname !== '' && rows.length === 0) {
+  if (userID !== '' && OAuth !== '' && state.accountname !== '' && rows.length === 0 && filter === '') {
     NotificationTable =
       <Grid item xs={12}>
         <Typography variant='h4' component='h2' onClick={window.location.reload(false)}>
           Try to Reload
         </Typography>
       </Grid >
-  } else if (rows.length > 0) {
+  } else if (rows.length > 0 || filter !== '') {
     NotificationTable =
       <Grid item xs={12}>
         <div className={classes.root}>
           <Paper className={classes.paper}>
+            <TextField id='standard-basic' className={classes.textField + ' ' + classes.searchBar} label='Search...' onChange={(e) => { setfilter(e.target.value) }} />
             <EnhancedTableToolbar numSelected={selected.length} />
             <TableContainer>
               <Table
@@ -407,7 +425,7 @@ export default function Options () { // https://material-ui.com/components/table
               </Table>
             </TableContainer>
             <TablePagination
-              rowsPerPageOptions={[25, 50, 100, 200, 500]}
+              rowsPerPageOptions={[25, 50, 100, 200, allRows.length]}
               component='div'
               count={rows.length}
               rowsPerPage={rowsPerPage}
@@ -465,7 +483,7 @@ export default function Options () { // https://material-ui.com/components/table
             />
           </Grid>
 
-          <Grid container item justify={'space-between'} >
+          <Grid container item justify='space-between'>
             <TwitchButton variant='contained' color='primary' onClick={() => save(state)} disabled={state.accountnameInput === '' || state.accountnameInput === state.accountname}>
               Twitch Login
             </TwitchButton>
