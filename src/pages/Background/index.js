@@ -11,6 +11,14 @@ const browserAPI = isFirefox ? browser : chrome
 console.log('isFirefox', isFirefox)
 let windowSettings = {}
 
+function storageGet (params = null) {
+  return new Promise((resolve, reject) => {
+    browserAPI.storage.sync.get(params, result => {
+      resolve(result)
+    })
+  })
+}
+
 const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onCreated
   if (changeInfo.status === 'loading' && changeInfo.url) {
     const urlRegex = changeInfo.url.match(re)
@@ -414,46 +422,46 @@ function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht w
 }
 
 function getChannels () {
-  return new Promise((resolve, reject) => {
-    browserAPI.storage.sync.get(['clientID', 'OAuth', 'userID'], async result => { // TODO: nötig?
-      if (result.clientID === '' || !result.OAuth || result.OAuth === '' || !result.userID || result.userID === '') {
-        console.debug("result.clientID === '' || result.OAuth === '' || result.userID === ''")
-        return
+  return new Promise(async (resolve, reject) => {
+    const result = await storageGet(['clientID', 'OAuth', 'userID']) // TODO: nötig?
+
+    if (result.clientID === '' || !result.OAuth || result.OAuth === '' || !result.userID || result.userID === '') {
+      console.debug("result.clientID === '' || result.OAuth === '' || result.userID === ''")
+      return
+    }
+
+    let total = 0
+    let pagination = ''
+    let i = 1
+    while (true) {
+      const count = i * 100
+
+      let url
+      if (pagination) { // https://dev.twitch.tv/docs/api/reference#get-users-follows
+        url = 'https://api.twitch.tv/helix/users/follows?first=100&after=' + pagination + '&from_id=' + result.userID
+      } else {
+        url = 'https://api.twitch.tv/helix/users/follows?first=100&from_id=' + result.userID
       }
 
-      let total = 0
-      let pagination = ''
-      let i = 1
-      while (true) {
-        const count = i * 100
-
-        let url
-        if (pagination) { // https://dev.twitch.tv/docs/api/reference#get-users-follows
-          url = 'https://api.twitch.tv/helix/users/follows?first=100&after=' + pagination + '&from_id=' + result.userID
-        } else {
-          url = 'https://api.twitch.tv/helix/users/follows?first=100&from_id=' + result.userID
+      try {
+        const twitchResult = await request({ url, clientID: result.clientID, OAuth: 'Bearer ' + result.OAuth })
+        total = twitchResult.total
+        pagination = twitchResult.pagination.cursor
+        const chanID = twitchResult.data.map(row => ({ id: row.to_id, name: row.to_name, nametoLowerCase: row.to_name.toLowerCase(), followed_at: row.followed_at }))
+        allChannels = allChannels.concat(chanID)
+      } catch (error) {
+        if (error) {
+          console.warn('// rejection3', error) // TODO: rejection3
+          window.alert(error)
         }
-
-        try {
-          const twitchResult = await request({ url, clientID: result.clientID, OAuth: 'Bearer ' + result.OAuth })
-          total = twitchResult.total
-          pagination = twitchResult.pagination.cursor
-          const chanID = twitchResult.data.map(row => ({ id: row.to_id, name: row.to_name, nametoLowerCase: row.to_name.toLowerCase(), followed_at: row.followed_at }))
-          allChannels = allChannels.concat(chanID)
-        } catch (error) {
-          if (error) {
-            console.warn('// rejection3', error) // TODO: rejection3
-            window.alert(error)
-          }
-        }
-
-        if (count >= total) {
-          break
-        }
-        i++
       }
-      resolve()
-    })
+
+      if (count >= total) {
+        break
+      }
+      i++
+    }
+    resolve()
   })
 }
 
@@ -498,19 +506,15 @@ if (isFirefox) { // without Buttons
 ;(async () => {
   browserAPI.browserAction.setBadgeBackgroundColor({ color: '#9146FF' }) // https://brand.twitch.tv/
   if (isFirefox) browserAPI.browserAction.setBadgeTextColor({ color: '#f0f0f0' })
+  windowSettings = await storageGet() // init Data
+  window.getInit(true)
+  window.setInterval(async () => {
+    window.getInit()
+  }, UPDATE_INTERVAL)
 
-  browserAPI.storage.sync.get(null, result => { // init Data
-    windowSettings = result
-
-    window.getInit(true)
-    window.setInterval(async () => {
-      window.getInit()
-    }, UPDATE_INTERVAL)
-
-    if (windowSettings && windowSettings.PriorityChannels && windowSettings.PriorityChannels.length < 51) {
-      connect().then(() => {
-        listen(windowSettings.PriorityChannels.map(chan => `video-playback.${chan.toLowerCase()}`))
-      })
-    }
-  })
+  if (windowSettings && windowSettings.PriorityChannels && windowSettings.PriorityChannels.length < 51) {
+    connect().then(() => {
+      listen(windowSettings.PriorityChannels.map(chan => `video-playback.${chan.toLowerCase()}`))
+    })
+  }
 })()
