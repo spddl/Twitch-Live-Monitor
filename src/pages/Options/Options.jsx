@@ -268,6 +268,10 @@ export default function Options () { // https://material-ui.com/components/table
     checkboxTwoLines: background.settingsReducer({ type: 'GET', value: { name: 'checkboxTwoLines' } }) || false,
     checkboxDarkMode: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDarkMode' } }) || false
   })
+  let rowsPerPageOptions = [25, 50, 100, 200]
+  if (allRows.length > 200) {
+    rowsPerPageOptions.push(allRows.length)
+  }
 
   const [filter, setfilter] = React.useState('')
   const lowercasedFilter = filter.toLowerCase()
@@ -425,7 +429,7 @@ export default function Options () { // https://material-ui.com/components/table
               </Table>
             </TableContainer>
             <TablePagination
-              rowsPerPageOptions={[25, 50, 100, 200, allRows.length]}
+              rowsPerPageOptions={rowsPerPageOptions}
               component='div'
               count={rows.length}
               rowsPerPage={rowsPerPage}
