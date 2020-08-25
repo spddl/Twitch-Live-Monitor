@@ -8,7 +8,6 @@ const re = /^https:\/\/github.com\/spddl\/Twitch-Live-Monitor#access_token=(.*?)
 const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
 
-console.log('isFirefox', isFirefox)
 let windowSettings = {}
 
 function storageGet (params = null) {
@@ -105,7 +104,6 @@ const heartbeat = () => { ws.send('{"type":"PING"}') }
 
 // Clients can listen on up to 50 topics per connection. Trying to listen on more topics will result in an error message.
 function listen (topics) { // https://dev.twitch.tv/docs/pubsub#topics
-  console.debug('listen', topics, ws.readyState)
   if (ws.readyState === 1) {
     const message = {
       type: 'LISTEN',
@@ -278,7 +276,7 @@ const request = ({ url, clientID, OAuth }) => {
   return new Promise((resolve, reject) => {
     // console.debug({ url, clientID, OAuth })
     const xhr = new XMLHttpRequest()
-    xhr.open('GET', url + ((/\?/).test(url) ? '&' : '?') + (new Date()).getTime()) // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest#Bypassing_the_cache
+    xhr.open('GET', url + ((/\?/).test(url) ? '&' : '?') + new Date().getTime()) // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest#Bypassing_the_cache
     xhr.setRequestHeader('Accept', 'application/vnd.twitchtv.v5+json')
     xhr.setRequestHeader('Client-ID', clientID)
     xhr.setRequestHeader('Authorization', OAuth)
@@ -336,6 +334,11 @@ function checkStatus (notify = true) {
       if (values[i] && values[i].data && values[i].data.length) {
         tempLiveChannels = tempLiveChannels.concat(values[i].data)
       }
+    }
+
+    if (LiveChannels.undefined) {
+      console.warn('LiveChannels.undefined found')
+      delete LiveChannels.undefined
     }
 
     LiveChannelsArray = Object.keys(LiveChannels)
@@ -448,6 +451,7 @@ function getChannels () {
         total = twitchResult.total
         pagination = twitchResult.pagination.cursor
         const chanID = twitchResult.data.map(row => ({ id: row.to_id, name: row.to_name, nametoLowerCase: row.to_name.toLowerCase(), followed_at: row.followed_at }))
+
         allChannels = allChannels.concat(chanID)
       } catch (error) {
         if (error) {
@@ -507,6 +511,7 @@ if (isFirefox) { // without Buttons
   browserAPI.browserAction.setBadgeBackgroundColor({ color: '#9146FF' }) // https://brand.twitch.tv/
   if (isFirefox) browserAPI.browserAction.setBadgeTextColor({ color: '#f0f0f0' })
   windowSettings = await storageGet() // init Data
+
   window.getInit(true)
   window.setInterval(async () => {
     window.getInit()
