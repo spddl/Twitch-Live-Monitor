@@ -101,7 +101,7 @@ export default function Popup () {
     const { key, keyCode } = event
     if (keyCode === 8 || keyCode === 46) { // Delete
       setPressed([])
-    } else if (keyCode > 64 && keyCode < 91) { // a - z
+    } else if ((keyCode > 64 && keyCode < 91 /* a - z */) || (keyCode > 47 && keyCode < 58 /* 0 - 9 */)) {
       setPressed([...pressed, key])
     }
   }, [pressed])
@@ -169,6 +169,7 @@ export default function Popup () {
           />
         </div>
       }
+      {viewData.length !== 0 &&
       <List className={classes.root + ' ' + ((checkboxDarkMode || false) ? 'DarkMode' : 'BrightMode')} subheader={<li />} dense={checkboxDense || false} >
         {viewData.map((channelName, index) => (
           <li key={`section-${index}`} className={classes.listSection}>
@@ -188,6 +189,7 @@ export default function Popup () {
         ))
         }
       </List>
+      }
     </>
   )
 }
