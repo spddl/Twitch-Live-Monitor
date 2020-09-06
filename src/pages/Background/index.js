@@ -10,7 +10,7 @@ const browserAPI = isFirefox ? browser : chrome
 
 let windowSettings = {}
 
-function storageGet (params = null) {
+const storageGet = (params = null) => {
   return new Promise((resolve, reject) => {
     browserAPI.storage.sync.get(params, result => {
       resolve(result)
@@ -23,9 +23,17 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
     const urlRegex = changeInfo.url.match(re)
     if (urlRegex !== null) {
       window.settingsReducer({ type: 'SET', value: { name: 'OAuth', value: urlRegex[1] } })
-      const userID = window.settingsReducer({ type: 'GET', value: { name: 'userID' } }) || ''
+      const { OAuth, clientID, userID, accountnameInput } = window.settingsReducer({ type: 'GETALL' }) || {}
       if (!userID) {
-        getUserID().then(() => {
+        const url = 'https://api.twitch.tv/kraken/users?login=' + accountnameInput
+        request({ url, clientID, OAuth }).then(data => {
+          if (data._total === 1) {
+            window.settingsReducer({ type: 'SET', value: { name: 'userID', value: data.users[0]._id } })
+            window.settingsReducer({ type: 'SET', value: { name: 'accountname', value: accountnameInput } })
+          } else {
+            console.warn('OAuthListener, not found', { data })
+          }
+
           window.getInit(true)
           if (isFirefox) {
             browserAPI.tabs.update(tab.id, { url: browser.runtime.getManifest().options_ui.page })
@@ -51,37 +59,6 @@ window.createOAuthListener = () => {
   browserAPI.tabs.onUpdated.addListener(OAuthListener)
 }
 
-const getUserID = () => {
-  return new Promise((resolve, reject) => {
-    const { OAuth, clientID, userID, accountnameInput } = window.settingsReducer({ type: 'GETALL' })
-    console.debug('getUserID', { clientID, userID, accountnameInput })
-    if (!userID) {
-      const xhr = new XMLHttpRequest()
-      xhr.open('GET', 'https://api.twitch.tv/kraken/users?login=' + accountnameInput, true, null, null)
-      xhr.setRequestHeader('Accept', 'application/vnd.twitchtv.v5+json')
-      xhr.setRequestHeader('Authorization', 'OAuth ' + OAuth)
-      xhr.setRequestHeader('Client-ID', clientID)
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const data = JSON.parse(xhr.responseText)
-          if (data._total === 1) {
-            window.settingsReducer({ type: 'SET', value: { name: 'userID', value: data.users[0]._id } })
-            window.settingsReducer({ type: 'SET', value: { name: 'accountname', value: accountnameInput } })
-            resolve()
-          } else {
-            console.warn('not found', { data })
-            reject(new Error('not found', { data }))
-          }
-        } else {
-          console.warn(xhr.statusText, xhr.responseText)
-          reject(new Error(xhr.statusText, xhr.responseText))
-        }
-      })
-      xhr.send()
-    }
-  })
-}
-
 let ws
 
 const UPDATE_INTERVAL = 60 * 1000 * 2 // 2 minutes
@@ -91,11 +68,12 @@ const GameIDList = {}
 let allChannels = []
 
 // Source: https://www.thepolyglotdeveloper.com/2015/03/create-a-random-nonce-string-using-javascript/
-function nonce (length) {
+const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+const nonce = length => {
   let text = ''
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  for (var i = 0; i < length; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length))
+  let i = 0
+  while (i < length) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length)); i++
   }
   return text
 }
@@ -103,7 +81,7 @@ function nonce (length) {
 const heartbeat = () => { ws.send('{"type":"PING"}') }
 
 // Clients can listen on up to 50 topics per connection. Trying to listen on more topics will result in an error message.
-function listen (topics) { // https://dev.twitch.tv/docs/pubsub#topics
+const listen = topics => { // https://dev.twitch.tv/docs/pubsub#topics
   if (ws.readyState === 1) {
     const message = {
       type: 'LISTEN',
@@ -121,7 +99,7 @@ function listen (topics) { // https://dev.twitch.tv/docs/pubsub#topics
   }
 }
 
-function connect () {
+const connect = () => {
   return new Promise((resolve, reject) => {
     const heartbeatInterval = 1000 * 60 // ms between PING's
     const reconnectInterval = 1000 * 3 // ms to wait before reconnect
@@ -278,8 +256,8 @@ const request = ({ url, clientID, OAuth }) => {
     const xhr = new XMLHttpRequest()
     xhr.open('GET', url + ((/\?/).test(url) ? '&' : '?') + new Date().getTime()) // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest#Bypassing_the_cache
     xhr.setRequestHeader('Accept', 'application/vnd.twitchtv.v5+json')
-    xhr.setRequestHeader('Client-ID', clientID)
     xhr.setRequestHeader('Authorization', OAuth)
+    xhr.setRequestHeader('Client-ID', clientID)
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText))
@@ -297,9 +275,9 @@ const toDataURL = url => {
   return new Promise((resolve, reject) => {
     try {
       const xhr = new XMLHttpRequest()
-      xhr.onload = function () {
+      xhr.onload = () => {
         const reader = new FileReader()
-        reader.onloadend = function () {
+        reader.onloadend = () => {
           resolve(reader.result)
         }
         reader.readAsDataURL(xhr.response)
@@ -314,7 +292,7 @@ const toDataURL = url => {
 }
 
 let tempGameIDList = []
-function checkStatus (notify = true) {
+const checkStatus = (notify = true) => {
   return new Promise(async (resolve, reject) => {
     if (allChannels.length === 0) {
       return
@@ -327,7 +305,6 @@ function checkStatus (notify = true) {
     }
 
     let tempLiveChannels = []
-
     // https://dev.twitch.tv/docs/api/reference#get-streams
     const values = await Promise.all(results.map(result => request({ url: 'https://api.twitch.tv/helix/streams?user_id=' + result.join('&user_id='), clientID: windowSettings.clientID, OAuth: 'Bearer ' + windowSettings.OAuth })))
     for (let i = 0; i < values.length; i++) {
@@ -335,6 +312,20 @@ function checkStatus (notify = true) {
         tempLiveChannels = tempLiveChannels.concat(values[i].data)
       }
     }
+    // console.log({ tempLiveChannels })
+    // tempLiveChannels: Array(33)
+    //   0:
+    //     game_id: "509658"
+    //     id: "543175586"
+    //     language: "de"
+    //     started_at: "2020-09-06T16:20:00Z"
+    //     tag_ids: ["9166ad14-41f1-4b04-a3b8-c8eb838c6be6"]
+    //     thumbnail_url: "https://static-cdn.jtvnw.net/previews-ttv/live_user_montanablack88-{width}x{height}.jpg"
+    //     title: "Numero Uno"
+    //     type: "live"
+    //     user_id: "45044816"
+    //     user_name: "MontanaBlack88"
+    //     viewer_count: 59521
 
     if (LiveChannels.undefined) {
       console.warn('LiveChannels.undefined found')
@@ -352,13 +343,17 @@ function checkStatus (notify = true) {
     newOnline.forEach(async onlineChan => {
       const chan = tempLiveChannels.find(ele => ele.user_name === onlineChan)
 
+      if (chan.type !== 'live') {
+        console.warn(chan, 'ist nicht Live')
+      }
       LiveChannels[chan.user_name] = {
         nametoLowerCase: chan.user_name.toLowerCase(),
         game_id: chan.game_id,
         started_at: chan.started_at,
         title: chan.title,
         type: chan.type,
-        viewer_count: chan.viewer_count
+        viewer_count: chan.viewer_count,
+        thumbnail_url: chan.thumbnail_url
       }
 
       if (!GameIDList[chan.game_id] && chan.game_id !== '') { // eslint-disable-line camelcase
@@ -401,7 +396,7 @@ function checkStatus (notify = true) {
   })
 }
 
-function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht werden sollten auch gelöscht werden
+const getGameIDList = () => { // TODO: Games in der Gamelist die nicht gebraucht werden sollten auch gelöscht werden
   return new Promise(async (resolve, reject) => {
     if (tempGameIDList.length) {
       // https://dev.twitch.tv/docs/api/reference#get-games
@@ -411,11 +406,12 @@ function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht w
         clientID: windowSettings.clientID,
         OAuth: 'Bearer ' + windowSettings.OAuth
       }).then(result => {
+        console.log('getGameIDList', result)
         result.data.forEach(ele => {
           GameIDList[ele.id] = ele.name
         })
       }, reason => {
-        console.warn('// rejection2', reason)
+        console.warn('// getGameIDList() rejection', reason)
         window.alert(reason)
       })
       tempGameIDList = []
@@ -424,7 +420,7 @@ function getGameIDList () { // TODO: Games in der Gamelist die nicht gebraucht w
   })
 }
 
-function getChannels () {
+const getChannels = () => {
   return new Promise(async (resolve, reject) => {
     const result = await storageGet(['clientID', 'OAuth', 'userID']) // TODO: nötig?
 
@@ -450,12 +446,15 @@ function getChannels () {
         const twitchResult = await request({ url, clientID: result.clientID, OAuth: 'Bearer ' + result.OAuth })
         total = twitchResult.total
         pagination = twitchResult.pagination.cursor
+
+        // console.log({ data: twitchResult.data, total, pagination })
+        // {from_id: "29218758", from_name: "spddl", to_id: "30813436", to_name: "scriptum1337", followed_at: "2012-07-10T11:14:47Z"}
         const chanID = twitchResult.data.map(row => ({ id: row.to_id, name: row.to_name, nametoLowerCase: row.to_name.toLowerCase(), followed_at: row.followed_at }))
 
         allChannels = allChannels.concat(chanID)
       } catch (error) {
         if (error) {
-          console.warn('// rejection3', error) // TODO: rejection3
+          console.warn('// getChannels() rejection', error)
           window.alert(error)
         }
       }
@@ -469,7 +468,7 @@ function getChannels () {
   })
 }
 
-function pushNotification ({ channel, title, message, iconUrl }) {
+const pushNotification = ({ channel, title, message, iconUrl }) => {
   if (isFirefox) {
     browserAPI.notifications.create(channel, { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/notifications/create
       type: 'basic',

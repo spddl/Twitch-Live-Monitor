@@ -267,7 +267,8 @@ export default function Options () { // https://material-ui.com/components/table
     accountnameInput: background.settingsReducer({ type: 'GET', value: { name: 'accountnameInput' } }) || '',
     checkboxDense: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDense' } }) || false,
     checkboxTwoLines: background.settingsReducer({ type: 'GET', value: { name: 'checkboxTwoLines' } }) || false,
-    checkboxDarkMode: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDarkMode' } }) || false
+    checkboxDarkMode: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDarkMode' } }) || false,
+    checkboxThumbnail: background.settingsReducer({ type: 'GET', value: { name: 'checkboxThumbnail' } }) || false
   })
   let rowsPerPageOptions = [25, 50, 100, 200]
   if (allRows.length > 200) {
@@ -340,7 +341,7 @@ export default function Options () { // https://material-ui.com/components/table
     setPage(0)
   }
 
-  const handleChange = (event) => {
+  const handleChange = event => {
     event.persist()
     const name = event.target.name
     let value
@@ -487,6 +488,13 @@ export default function Options () { // https://material-ui.com/components/table
             <FormControlLabel
               control={<Checkbox checked={state.checkboxDarkMode} onChange={handleChange} name='checkboxDarkMode' />}
               label='Popup List on Darkmode'
+            />
+          </Grid>
+
+          <Grid item xs={12} lg={6}>
+            <FormControlLabel
+              control={<Checkbox checked={state.checkboxThumbnail} onChange={handleChange} name='checkboxThumbnail' />}
+              label='Thumbnail in List'
             />
           </Grid>
 

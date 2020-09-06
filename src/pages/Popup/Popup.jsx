@@ -9,6 +9,8 @@ import ListSubheader from '@material-ui/core/ListSubheader'
 // import useMediaQuery from '@material-ui/core/useMediaQuery'
 import InputBase from '@material-ui/core/InputBase'
 import SearchIcon from '@material-ui/icons/Search'
+import ListItemAvatar from '@material-ui/core/ListItemAvatar'
+import Avatar from '@material-ui/core/Avatar'
 
 const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
@@ -93,7 +95,7 @@ export default function Popup () {
 
   const [pressed, setPressed] = React.useState([])
 
-  const { checkboxDense, checkboxTwoLines, checkboxDarkMode } = background.settingsReducer({ type: 'GETALL' }) || {}
+  const { checkboxDense, checkboxTwoLines, checkboxDarkMode, checkboxThumbnail } = background.settingsReducer({ type: 'GETALL' }) || {}
 
   const streams = background.getStreams()
 
@@ -131,14 +133,14 @@ export default function Popup () {
     if (viewData.find(ele => ele.game === game)) { // Spiel gefunden
       viewData.map(name => {
         if (name.game === game) {
-          name.streamer.push({ name: chanName, title: data.title, started_at: data.started_at, viewer_count: data.viewer_count, type: data.type, game_id: data.game_id }) // neuer Streamer wird hinzugefügt
+          name.streamer.push({ name: chanName, title: data.title, started_at: data.started_at, viewer_count: data.viewer_count, type: data.type, game_id: data.game_id, thumbnail_url: data.thumbnail_url ? data.thumbnail_url.replace(/{width}|{height}/g, '40') : '' }) // neuer Streamer wird hinzugefügt
         }
         return null
       })
     } else {
       viewData.push({ // erster Streamer in diesem Spiel
         game,
-        streamer: [{ name: chanName, title: data.title, started_at: data.started_at, viewer_count: data.viewer_count, type: data.type, game_id: data.game_id }]
+        streamer: [{ name: chanName, title: data.title, started_at: data.started_at, viewer_count: data.viewer_count, type: data.type, game_id: data.game_id, thumbnail_url: data.thumbnail_url ? data.thumbnail_url.replace(/{width}|{height}/g, '40') : '' }]
       })
     }
   }
@@ -177,6 +179,14 @@ export default function Popup () {
               <ListSubheader>{channelName.game}</ListSubheader>
               {channelName.streamer.map((channel, i) => (
                 <ListItem button key={`item-${index}-${channel.name}`}>
+                  {checkboxThumbnail &&
+                  <ListItemAvatar>
+                    <Avatar variant='rounded'
+                      alt={channel.thumbnail_url}
+                      src={channel.thumbnail_url}
+                    />
+                  </ListItemAvatar>
+                  }
                   <ListItemText
                     primary={channel.name}
                     secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? `viewer: ${channel.viewer_count}, uptime: ${timeAgo(channel.started_at, now)}` : null}
