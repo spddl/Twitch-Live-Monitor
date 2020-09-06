@@ -25,6 +25,7 @@ import TableSortLabel from '@material-ui/core/TableSortLabel'
 import Toolbar from '@material-ui/core/Toolbar'
 import Typography from '@material-ui/core/Typography'
 import Paper from '@material-ui/core/Paper'
+import Link from '@material-ui/core/Link'
 
 const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
@@ -374,7 +375,7 @@ export default function Options () { // https://material-ui.com/components/table
               <Table
                 className={classes.table}
                 aria-labelledby='tableTitle'
-                size={'small'}
+                size='small'
                 aria-label='enhanced table'
               >
                 <EnhancedTableHead
@@ -414,7 +415,9 @@ export default function Options () { // https://material-ui.com/components/table
                             scope='row'
                             padding='none'
                           >
-                            {row.name}
+                            <Link href={'https://www.twitch.tv/' + row.name} color='inherit' target='_blank' rel='noopener'>
+                              {row.name}
+                            </Link>
                           </TableCell>
                           <TableCell align='right'>{row.followed_at}</TableCell>
                         </TableRow>
