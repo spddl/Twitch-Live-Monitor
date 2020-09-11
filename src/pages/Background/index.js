@@ -8,6 +8,12 @@ const re = /^https:\/\/github.com\/spddl\/Twitch-Live-Monitor#access_token=(.*?)
 const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
 
+let ws
+const UPDATE_INTERVAL = 60 * 1000 * 2 // 2 minutes
+// const UPDATE_INTERVAL = 25 * 1000 // debug
+let LiveChannels = {}
+const GameIDList = {}
+let allChannels = []
 let windowSettings = {}
 
 const storageGet = (params = null) => {
@@ -58,14 +64,6 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
 window.createOAuthListener = () => {
   browserAPI.tabs.onUpdated.addListener(OAuthListener)
 }
-
-let ws
-
-const UPDATE_INTERVAL = 60 * 1000 * 2 // 2 minutes
-let LiveChannels = {}
-let LiveChannelsArray = []
-const GameIDList = {}
-let allChannels = []
 
 // Source: https://www.thepolyglotdeveloper.com/2015/03/create-a-random-nonce-string-using-javascript/
 const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
@@ -127,22 +125,14 @@ const connect = () => {
           const chanName = eventData.data.topic.substr(15)
           const msg = JSON.parse(eventData.data.message)
 
-          const targetChannel = LiveChannelsArray.find(element => element.toLowerCase() === chanName)
-          if (!targetChannel) {
-            LiveChannels[targetChannel] = {}
-          }
-          LiveChannels[targetChannel].viewer_count = msg.viewers
-
-          const LiveChannelsKeys = LiveChannelsArray.map(chan => chan.toLowerCase())
-
           if (msg.type === 'stream-up') {
-            if (LiveChannelsKeys.indexOf(chanName) === -1) {
+            if (!LiveChannels[chanName]) {
               const found = allChannels.find(element => element.nametoLowerCase === chanName)
 
               // https://dev.twitch.tv/docs/v5/reference/channels#get-channel-by-id
               const chan = await request({ url: 'https://api.twitch.tv/kraken/channels/' + found.id, clientID: windowSettings.clientID, OAuth: 'Bearer ' + windowSettings.OAuth })
 
-              LiveChannels[chan.display_name] = {
+              LiveChannels[chanName] = {
                 game_id: '',
                 game: chan.game,
                 started_at: new Date(msg.server_time * 1000).toISOString(),
@@ -150,13 +140,15 @@ const connect = () => {
                 type: 'live',
                 viewer_count: 0
               }
-
               const iconUrl = await toDataURL(chan.logo)
-              pushNotification({ channel: chan.display_name, title: `${chan.display_name} is Online`, message: `${chan.status || chan.description}`, iconUrl })
+              pushNotification({ channel: chanName, title: `${chan.display_name} is Online`, message: `${chan.status || chan.description}`, iconUrl })
             }
           } else if (msg.type === 'stream-down') {
-            // TODO Wieder entfernen
-            console.debug('// Wieder entfernen', msg)
+            delete LiveChannels[chanName]
+          } else if (msg.type === 'viewcount') {
+            if (LiveChannels[chanName]) {
+              LiveChannels[chanName].viewer_count = msg.viewers
+            }
           }
           break
 
@@ -187,22 +179,54 @@ const connect = () => {
   })
 }
 
-window.getInit = async (channel = false) => {
-  if (channel) {
-    await getChannels()
+window.getInit = async (init = false) => {
+  if (init) {
+    await getChannels() // schreibt alle Channels in "allchannels"
+    await checkStatus(false) // notify
+  } else {
+    await checkStatus()
   }
-  await checkStatus(false)
-  browserAPI.browserAction.setBadgeText({ text: LiveChannelsArray.length.toString() })
+  browserAPI.browserAction.setBadgeText({ text: Object.keys(LiveChannels).length.toString() })
   await getGameIDList()
 }
 
 window.getStreams = () => LiveChannels
+
 window.setPriorityChannelReducer = value => {
   windowSettings.PriorityChannels = value
 
   browserAPI.storage.sync.set({ PriorityChannels: windowSettings.PriorityChannels }, () => {
     // console.debug('setPriorityChannelReducer saved', { PriorityChannels: windowSettings.PriorityChannels })
   })
+}
+
+window.setPropertyChannelReducer = (type, value) => {
+  switch (type) {
+    case 'isOnline':
+      windowSettings.PriorityChannels = value
+      browserAPI.storage.sync.set({ PriorityChannels: value }, () => {
+        // console.debug('setPriorityChannelReducer saved', { PriorityChannels: windowSettings.PriorityChannels })
+      })
+      break
+
+    case 'changeTitle':
+      windowSettings.changeTitleChannels = value
+      browserAPI.storage.sync.set({ changeTitleChannels: value }, () => {})
+      break
+
+    case 'changeGame':
+      windowSettings.changeGameChannels = value
+      browserAPI.storage.sync.set({ changeGameChannels: value }, () => {})
+      break
+
+    case 'isOffline':
+      windowSettings.isOfflineChannels = value
+      browserAPI.storage.sync.set({ isOfflineChannels: value }, () => {})
+      break
+
+    default:
+      console.warn('setPropertyChannelReducer', type, value)
+  }
 }
 
 window.settingsReducer = ({ type, value }) => {
@@ -222,7 +246,6 @@ window.settingsReducer = ({ type, value }) => {
       windowSettings = {}
 
       LiveChannels = {}
-      LiveChannelsArray = []
       allChannels = []
 
       browserAPI.storage.sync.clear(() => {
@@ -248,6 +271,10 @@ window.openStream = channelName => {
   } else {
     browserAPI.tabs.create({ url: 'https://www.twitch.tv/' + channelName.replace(/\s/g, '') })
   }
+}
+
+window.openLink = url => {
+  browserAPI.tabs.create({ url })
 }
 
 const request = ({ url, clientID, OAuth }) => {
@@ -297,7 +324,7 @@ const checkStatus = (notify = true) => {
     if (allChannels.length === 0) {
       return
     }
-    const tempAllChannels = allChannels.map(row => row.id)
+    const tempAllChannels = allChannels.map(row => row.id) // userId
 
     const results = []
     while (tempAllChannels.length > 0) { // Split Array in Chunks
@@ -312,92 +339,100 @@ const checkStatus = (notify = true) => {
         tempLiveChannels = tempLiveChannels.concat(values[i].data)
       }
     }
-    // console.log({ tempLiveChannels })
-    // tempLiveChannels: Array(33)
-    //   0:
-    //     game_id: "509658"
-    //     id: "543175586"
-    //     language: "de"
-    //     started_at: "2020-09-06T16:20:00Z"
-    //     tag_ids: ["9166ad14-41f1-4b04-a3b8-c8eb838c6be6"]
-    //     thumbnail_url: "https://static-cdn.jtvnw.net/previews-ttv/live_user_montanablack88-{width}x{height}.jpg"
-    //     title: "Numero Uno"
-    //     type: "live"
-    //     user_id: "45044816"
-    //     user_name: "MontanaBlack88"
-    //     viewer_count: 59521
 
-    if (LiveChannels.undefined) {
-      console.warn('LiveChannels.undefined found')
-      delete LiveChannels.undefined
-    }
+    const LiveChannelsCopy = { ...LiveChannels }
+    const GameIDListCopy = { ...GameIDList }
 
-    LiveChannelsArray = Object.keys(LiveChannels)
+    for (let i = 0, len = tempLiveChannels.length; i < len; i++) {
+      const value = tempLiveChannels[i]
+      value.nametoLowerCase = value.user_name.toLowerCase()
 
-    const tempLiveChannelsKeys = tempLiveChannels.map(chan => chan.user_name) // neuen Channels
-
-    const newOnline = tempLiveChannelsKeys.filter(chan => !LiveChannelsArray.includes(chan)) // https://stackoverflow.com/questions/1187518/how-to-get-the-difference-between-two-arrays-in-javascript
-    if (newOnline.length) {
-      console.debug('newOnline', newOnline)
-    }
-    newOnline.forEach(async onlineChan => {
-      const chan = tempLiveChannels.find(ele => ele.user_name === onlineChan)
-
-      if (chan.type !== 'live') {
-        console.warn(chan, 'ist nicht Live')
-      }
-      LiveChannels[chan.user_name] = {
-        nametoLowerCase: chan.user_name.toLowerCase(),
-        game_id: chan.game_id,
-        started_at: chan.started_at,
-        title: chan.title,
-        type: chan.type,
-        viewer_count: chan.viewer_count,
-        thumbnail_url: chan.thumbnail_url
+      if (value.type !== 'live') {
+        console.warn(value, 'ist nicht Live')
       }
 
-      if (!GameIDList[chan.game_id] && chan.game_id !== '') { // eslint-disable-line camelcase
-        tempGameIDList.push(chan.game_id)
-      }
+      if (LiveChannelsCopy[value.nametoLowerCase]) { // Channel ist weiterhin Online
+        if (LiveChannelsCopy[value.nametoLowerCase].game_id !== value.game_id) { // Channel spielt nicht mehr das selbe Spiel
+          console.log(value.user_name, 'neues Spiel', LiveChannelsCopy[value.nametoLowerCase].game_id, '!==', value.game_id)
+          console.log(value)
 
-      if (notify && windowSettings.PriorityChannels.indexOf(chan.user_name) !== -1) {
-        console.debug('notify', `${chan.user_name} is Online${chan.viewer_count === 0 ? '' : ' (' + chan.viewer_count + ')'}`)
-        const iconUrl = await toDataURL(chan.thumbnail_url.replace(/{width}|{height}/g, '64'))
-        pushNotification({ channel: chan.user_name, title: `${chan.user_name} is Online${chan.viewer_count === 0 ? '' : ' (' + chan.viewer_count + ')'}`, message: `${chan.title}`, iconUrl })
-      }
-    })
+          if (notify && windowSettings.changeGameChannels.indexOf(value.nametoLowerCase) !== -1) { // TODO: neues Spiel property
+            if (!GameIDList[value.game_id] && value.game_id !== '') { // eslint-disable-line camelcase
+              await getGameIDList(value.game_id)
+            }
+            console.debug('notify', `${value.user_name} neues Spiel ${GameIDList[value.game_id]}`)
 
-    const newOffline = LiveChannelsArray.filter(chan => !tempLiveChannelsKeys.includes(chan))
-    if (newOffline.length) {
-      console.debug('newOffline', newOffline)
-    }
+            const iconUrl = await toDataURL(value.thumbnail_url.replace(/{width}|{height}/g, '256'))
+            pushNotification({ channel: value.nametoLowerCase, title: `${value.user_name} (Game has changed)`, message: GameIDList[value.game_id] ? GameIDList[value.game_id] : 'undefined', iconUrl })
+          }
 
-    newOffline.forEach(offlineChan => {
-      delete LiveChannels[offlineChan]
-    })
-
-    tempLiveChannels.forEach(tempChan => { // falls sie die Daten ändern werden sie hier aktualisiert
-      const liveChan = LiveChannels[tempChan.user_name]
-      if (tempChan.game_id !== liveChan.game_id ||
-        tempChan.started_at !== liveChan.started_at ||
-        tempChan.title !== liveChan.title ||
-        tempChan.type !== liveChan.type ||
-        tempChan.viewer_count !== liveChan.viewer_count) {
-        const { game_id, started_at, title, type, viewer_count } = tempChan // eslint-disable-line camelcase
-        if (!GameIDList[game_id] && game_id !== '') { // eslint-disable-line camelcase
-          tempGameIDList.push(game_id)
+          if (!GameIDList[value.game_id] && value.game_id !== '') { // eslint-disable-line camelcase
+            tempGameIDList.push(value.game_id)
+          }
         }
-        LiveChannels[tempChan.user_name] = { game_id, started_at, title, type, viewer_count }
+
+        if (LiveChannelsCopy[value.nametoLowerCase].title !== value.title) { // Channel spielt nicht mehr das selbe Spiel
+          console.log(value.user_name, 'neuer Titel', LiveChannelsCopy[value.nametoLowerCase].title, '!==', value.title)
+          console.log(value)
+
+          if (notify && windowSettings.changeTitleChannels.indexOf(value.nametoLowerCase) !== -1) { // TODO: neuer Titel property
+            console.debug('notify', `${value.user_name} neuer Titel ${value.game_id}`)
+            const iconUrl = await toDataURL(value.thumbnail_url.replace(/{width}|{height}/g, '256'))
+            pushNotification({ channel: value.nametoLowerCase, title: `${value.user_name}, (new Title)`, message: value.title, iconUrl })
+          }
+        }
+
+        delete LiveChannelsCopy[value.nametoLowerCase]
+        delete GameIDListCopy[value.game_id]
+      } else {
+        if (notify) console.log(value.user_name, 'ist jetzt online')
+        if (!GameIDList[value.game_id] && value.game_id !== '') { // eslint-disable-line camelcase
+          tempGameIDList.push(value.game_id)
+        }
+
+        if (notify && windowSettings.PriorityChannels.indexOf(value.nametoLowerCase) !== -1) {
+          console.debug('notify', `${value.user_name} is Online${value.viewer_count === 0 ? '' : ' (' + value.viewer_count + ')'}`)
+          const iconUrl = await toDataURL(value.thumbnail_url.replace(/{width}|{height}/g, '256'))
+          pushNotification({ channel: value.nametoLowerCase, title: `${value.user_name} is Online${value.viewer_count === 0 ? '' : ' (' + value.viewer_count + ')'}`, message: `${value.title}`, iconUrl })
+        }
       }
-    })
-    LiveChannelsArray = Object.keys(LiveChannels)
-    // console.timeEnd('// TODO: needs to be improved')
+
+      LiveChannels[value.user_name.toLowerCase()] = {
+        name: value.user_name,
+        game_id: value.game_id,
+        started_at: value.started_at,
+        title: value.title,
+        type: value.type,
+        viewer_count: value.viewer_count,
+        thumbnail_url: value.thumbnail_url
+      }
+    }
+
+    for (let channel in LiveChannelsCopy) {
+      if (notify && windowSettings.isOfflineChannels.indexOf(channel) !== -1) {
+        console.log('isOffline', channel)
+        const chan = await request({ url: 'https://api.twitch.tv/kraken/users?login=' + channel, clientID: windowSettings.clientID, OAuth: 'Bearer ' + windowSettings.OAuth })
+        const targetChannel = chan.users[0]
+
+        const iconUrl = await toDataURL(targetChannel.logo)
+        pushNotification({ channel: targetChannel.display_name, title: `${targetChannel.display_name} is Offline`, iconUrl })
+      }
+      delete LiveChannels[channel]
+    }
+
+    for (let gameId in GameIDListCopy) {
+      delete GameIDList[gameId]
+    }
     resolve(LiveChannels)
   })
 }
 
-const getGameIDList = () => { // TODO: Games in der Gamelist die nicht gebraucht werden sollten auch gelöscht werden
+const getGameIDList = (array = []) => { // TODO: Games in der Gamelist die nicht gebraucht werden sollten auch gelöscht werden
   return new Promise(async (resolve, reject) => {
+    if (array.length) {
+      tempGameIDList = tempGameIDList.concat(array)
+    }
+
     if (tempGameIDList.length) {
       // https://dev.twitch.tv/docs/api/reference#get-games
       const url = 'https://api.twitch.tv/helix/games?id=' + tempGameIDList.join('&id=')
@@ -406,7 +441,7 @@ const getGameIDList = () => { // TODO: Games in der Gamelist die nicht gebraucht
         clientID: windowSettings.clientID,
         OAuth: 'Bearer ' + windowSettings.OAuth
       }).then(result => {
-        console.log('getGameIDList', result)
+        // console.log('getGameIDList', result)
         result.data.forEach(ele => {
           GameIDList[ele.id] = ele.name
         })
@@ -420,11 +455,20 @@ const getGameIDList = () => { // TODO: Games in der Gamelist die nicht gebraucht
   })
 }
 
+// getChannels gibt alle gefolgten Channels zurück
 const getChannels = () => {
   return new Promise(async (resolve, reject) => {
-    const result = await storageGet(['clientID', 'OAuth', 'userID']) // TODO: nötig?
+    let { clientID, OAuth, userID } = windowSettings || {}
+    if (clientID === '' || !OAuth || OAuth === '' || !userID || userID === '') {
+      console.debug("(window.settingsReducer) clientID === '' || OAuth === '' || userID === ''")
+      const result = await storageGet(['clientID', 'OAuth', 'userID'])
+      // { clientID, OAuth, userID } = result
+      clientID = result.clientID
+      OAuth = result.OAuth
+      userID = result.userID
+    }
 
-    if (result.clientID === '' || !result.OAuth || result.OAuth === '' || !result.userID || result.userID === '') {
+    if (clientID === '' || !OAuth || OAuth === '' || !userID || userID === '') {
       console.debug("result.clientID === '' || result.OAuth === '' || result.userID === ''")
       return
     }
@@ -437,20 +481,17 @@ const getChannels = () => {
 
       let url
       if (pagination) { // https://dev.twitch.tv/docs/api/reference#get-users-follows
-        url = 'https://api.twitch.tv/helix/users/follows?first=100&after=' + pagination + '&from_id=' + result.userID
+        url = 'https://api.twitch.tv/helix/users/follows?first=100&after=' + pagination + '&from_id=' + userID
       } else {
-        url = 'https://api.twitch.tv/helix/users/follows?first=100&from_id=' + result.userID
+        url = 'https://api.twitch.tv/helix/users/follows?first=100&from_id=' + userID
       }
 
       try {
-        const twitchResult = await request({ url, clientID: result.clientID, OAuth: 'Bearer ' + result.OAuth })
+        const twitchResult = await request({ url, clientID: clientID, OAuth: 'Bearer ' + OAuth })
         total = twitchResult.total
         pagination = twitchResult.pagination.cursor
 
-        // console.log({ data: twitchResult.data, total, pagination })
-        // {from_id: "29218758", from_name: "spddl", to_id: "30813436", to_name: "scriptum1337", followed_at: "2012-07-10T11:14:47Z"}
         const chanID = twitchResult.data.map(row => ({ id: row.to_id, name: row.to_name, nametoLowerCase: row.to_name.toLowerCase(), followed_at: row.followed_at }))
-
         allChannels = allChannels.concat(chanID)
       } catch (error) {
         if (error) {
@@ -468,7 +509,8 @@ const getChannels = () => {
   })
 }
 
-const pushNotification = ({ channel, title, message, iconUrl }) => {
+const pushNotification = ({ channel = '', title = '', message = '', iconUrl }) => {
+  console.debug('pushNotification', { channel, title, message, iconUrl })
   if (isFirefox) {
     browserAPI.notifications.create(channel, { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/notifications/create
       type: 'basic',
@@ -482,7 +524,7 @@ const pushNotification = ({ channel, title, message, iconUrl }) => {
       // ]
     })
   } else {
-    browserAPI.notifications.create(channel, {// https://developer.chrome.com/apps/notifications#type-NotificationOptions
+    browserAPI.notifications.create(channel, { // https://developer.chrome.com/apps/notifications#type-NotificationOptions
       type: 'basic',
       title,
       priority: 0,

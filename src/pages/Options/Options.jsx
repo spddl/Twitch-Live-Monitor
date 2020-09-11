@@ -77,7 +77,10 @@ function stableSort (array, comparator) {
 }
 
 const headCells = [
-  { id: 'name', numeric: false, disablePadding: true, label: 'Twitch Name' },
+  { id: 'name', numeric: false, disablePadding: true, label: 'Twitch Name (Notification on Online)' },
+  { id: 'changeTitle', numeric: true, disablePadding: false, label: 'on Title change' },
+  { id: 'changeGame', numeric: true, disablePadding: false, label: 'on changing Game' },
+  { id: 'isOffline', numeric: true, disablePadding: false, label: 'when is Offline' },
   { id: 'followed_at', numeric: true, disablePadding: false, label: 'followed at' }
 ]
 
@@ -259,7 +262,11 @@ export default function Options () { // https://material-ui.com/components/table
 
   const [order, setOrder] = React.useState('desc')
   const [orderBy, setOrderBy] = React.useState('followed_at')
-  const [selected, setSelected] = React.useState(background.settingsReducer({ type: 'GET', value: { name: 'PriorityChannels' } }) || [])
+  const [selectedPriority, setSelectedPriority] = React.useState(background.settingsReducer({ type: 'GET', value: { name: 'PriorityChannels' } }) || [])
+  const [selectedChangeTitle, setSelectedChangeTitle] = React.useState(background.settingsReducer({ type: 'GET', value: { name: 'changeTitleChannels' } }) || [])
+  const [selectedChangeGame, setSelectedChangeGame] = React.useState(background.settingsReducer({ type: 'GET', value: { name: 'changeGameChannels' } }) || [])
+  const [selectedIsOffline, setSelectedIsOffline] = React.useState(background.settingsReducer({ type: 'GET', value: { name: 'isOfflineChannels' } }) || [])
+
   const [page, setPage] = React.useState(0)
   const [rowsPerPage, setRowsPerPage] = React.useState(25)
   const [state, setState] = React.useState({
@@ -297,32 +304,50 @@ export default function Options () { // https://material-ui.com/components/table
     if (event.target.checked) {
       const newSelecteds = rows.map(n => n.name)
       background.setPriorityChannelReducer(newSelecteds)
-      setSelected(newSelecteds)
+      setSelectedPriority(newSelecteds)
 
       return
     }
     background.setPriorityChannelReducer([])
-    setSelected([])
+    setSelectedPriority([])
   }
 
-  const handleClick = (event, name) => {
-    const selectedIndex = selected.indexOf(name)
+  const handleClickWrapper = (type, name) => {
+    const nametoLowerCase = name.toLowerCase()
+    let array
     let newSelected = []
-
+    switch (type) {
+      case 'isOnline': array = selectedPriority; break
+      case 'changeTitle': array = selectedChangeTitle; break
+      case 'changeGame': array = selectedChangeGame; break
+      case 'isOffline': array = selectedIsOffline; break
+      default:
+        console.warn('handleClickWrapper', type, name, nametoLowerCase)
+    }
+    const selectedIndex = array.indexOf(nametoLowerCase)
     if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, name)
+      newSelected = newSelected.concat(array, nametoLowerCase)
     } else if (selectedIndex === 0) {
-      newSelected = newSelected.concat(selected.slice(1))
-    } else if (selectedIndex === selected.length - 1) {
-      newSelected = newSelected.concat(selected.slice(0, -1))
+      newSelected = newSelected.concat(array.slice(1))
+    } else if (selectedIndex === array.length - 1) {
+      newSelected = newSelected.concat(array.slice(0, -1))
     } else if (selectedIndex > 0) {
       newSelected = newSelected.concat(
-        selected.slice(0, selectedIndex),
-        selected.slice(selectedIndex + 1)
+        array.slice(0, selectedIndex),
+        array.slice(selectedIndex + 1)
       )
     }
-    background.setPriorityChannelReducer(newSelected)
-    setSelected(newSelected)
+
+    switch (type) {
+      case 'isOnline': setSelectedPriority(newSelected); break
+      case 'changeTitle': setSelectedChangeTitle(newSelected); break
+      case 'changeGame': setSelectedChangeGame(newSelected); break
+      case 'isOffline': setSelectedIsOffline(newSelected); break
+      default:
+        console.warn('handleClickWrapper', type, name, nametoLowerCase)
+    }
+
+    background.setPropertyChannelReducer(type, newSelected)
   }
 
   const handleChangePage = (event, newPage) => {
@@ -334,7 +359,7 @@ export default function Options () { // https://material-ui.com/components/table
     setPage(0)
   }
 
-  const isSelected = name => selected.indexOf(name) !== -1
+  const isSelected = name => selectedPriority.indexOf(name) !== -1
 
   const emptyRows = rowsPerPage - Math.min(rowsPerPage, rows.length - page * rowsPerPage)
   if (page !== 0 && rowsPerPage > rows.length) {
@@ -371,7 +396,7 @@ export default function Options () { // https://material-ui.com/components/table
         <div className={classes.root}>
           <Paper className={classes.paper}>
             <TextField id='standard-basic' className={classes.textField + ' ' + classes.searchBar} label='Search...' onChange={(e) => { setfilter(e.target.value) }} />
-            <EnhancedTableToolbar numSelected={selected.length} />
+            <EnhancedTableToolbar numSelected={selectedPriority.length} />
             <TableContainer>
               <Table
                 className={classes.table}
@@ -381,7 +406,7 @@ export default function Options () { // https://material-ui.com/components/table
               >
                 <EnhancedTableHead
                   classes={classes}
-                  numSelected={selected.length}
+                  numSelected={selectedPriority.length}
                   order={order}
                   orderBy={orderBy}
                   onSelectAllClick={handleSelectAllClick}
@@ -392,24 +417,25 @@ export default function Options () { // https://material-ui.com/components/table
                   {stableSort(rows, getComparator(order, orderBy))
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((row, index) => {
-                      const isItemSelected = isSelected(row.name)
+                      const isItemSelected = isSelected(row.nametoLowerCase)
                       const labelId = `enhanced-table-checkbox-${index}`
                       return (
                         <TableRow
                           hover
-                          onClick={event => handleClick(event, row.name)}
                           role='checkbox'
                           aria-checked={isItemSelected}
                           tabIndex={-1}
-                          key={row.name}
+                          key={row.id}
                           selected={isItemSelected}
                         >
                           <TableCell padding='checkbox'>
                             <Checkbox
+                              onClick={() => handleClickWrapper('isOnline', row.nametoLowerCase)}
                               checked={isItemSelected}
                               inputProps={{ 'aria-labelledby': labelId }}
                             />
                           </TableCell>
+
                           <TableCell
                             component='th'
                             id={labelId}
@@ -419,7 +445,29 @@ export default function Options () { // https://material-ui.com/components/table
                             <Link href={'https://www.twitch.tv/' + row.name} color='inherit' target='_blank' rel='noopener'>
                               {row.name}
                             </Link>
+                            {/* <Link href='#' onClick={() => background.openLink('https://www.twitch.tv/' + row.name)} color='inherit' style={{ cursor: 'pointer' }}>
+                              {row.name}
+                            </Link> */}
                           </TableCell>
+                          <TableCell align='right'>
+                            <Checkbox // changeTitle
+                              onClick={() => handleClickWrapper('changeTitle', row.nametoLowerCase)}
+                              checked={selectedChangeTitle.indexOf(row.nametoLowerCase) !== -1}
+                            />
+                          </TableCell>
+                          <TableCell align='right'>
+                            <Checkbox // changeGame
+                              onClick={() => handleClickWrapper('changeGame', row.nametoLowerCase)}
+                              checked={selectedChangeGame.indexOf(row.nametoLowerCase) !== -1}
+                            />
+                          </TableCell>
+                          <TableCell align='right'>
+                            <Checkbox // isOffline
+                              onClick={() => handleClickWrapper('isOffline', row.nametoLowerCase)}
+                              checked={selectedIsOffline.indexOf(row.nametoLowerCase) !== -1}
+                            />
+                          </TableCell>
+
                           <TableCell align='right'>{row.followed_at}</TableCell>
                         </TableRow>
                       )

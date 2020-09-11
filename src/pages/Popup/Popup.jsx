@@ -116,7 +116,6 @@ export default function Popup () {
   })
 
   const GameIDList = background.getGameIDList()
-
   const searchBar = pressed.join('').toLowerCase()
 
   const viewData = []
@@ -153,6 +152,7 @@ export default function Popup () {
   }
 
   const now = new Date().getTime()
+
   return (
     <>
       {searchBar !== '' &&
@@ -181,8 +181,10 @@ export default function Popup () {
                 <ListItem button key={`item-${index}-${channel.name}`}>
                   {checkboxThumbnail &&
                   <ListItemAvatar>
-                    <Avatar variant='rounded'
-                      alt={channel.thumbnail_url}
+                    <Avatar
+                      variant='rounded'
+                      imgProps={{ async: 'on', loading: 'lazy' }}
+                      alt={channel.name}
                       src={channel.thumbnail_url}
                     />
                   </ListItemAvatar>
