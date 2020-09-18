@@ -14,6 +14,7 @@ const UPDATE_INTERVAL = 60 * 1000 * 2 // 2 minutes
 let LiveChannels = {}
 const GameIDList = {}
 let allChannels = []
+let allChannelsId = []
 let windowSettings = {}
 
 const storageGet = (params = null) => {
@@ -131,24 +132,30 @@ const connect = () => {
 
               // https://dev.twitch.tv/docs/v5/reference/channels#get-channel-by-id
               const chan = await request({ url: 'https://api.twitch.tv/kraken/channels/' + found.id, clientID: windowSettings.clientID, OAuth: 'Bearer ' + windowSettings.OAuth })
-
               LiveChannels[chanName] = {
+                source: 'ws',
+                name: chan.display_name || chan.name,
+                user_id: chan._id,
                 game_id: '',
                 game: chan.game,
                 started_at: new Date(msg.server_time * 1000).toISOString(),
                 title: chan.status || chan.description,
                 type: 'live',
-                viewer_count: 0
+                viewer_count: 0,
+                thumbnail_url: ''
               }
+
               const iconUrl = await toDataURL(chan.logo)
               pushNotification({ channel: chanName, title: `${chan.display_name} is Online`, message: `${chan.status || chan.description}`, iconUrl })
             }
           } else if (msg.type === 'stream-down') {
-            delete LiveChannels[chanName]
+            LiveChannels[chanName] = { disable: true }
           } else if (msg.type === 'viewcount') {
             if (LiveChannels[chanName]) {
               LiveChannels[chanName].viewer_count = msg.viewers
             }
+          } else {
+            console.warn('WS default:', chanName, msg) // {type: "commercial", server_time: 1600273745.207176, length: 60}
           }
           break
 
@@ -182,7 +189,7 @@ const connect = () => {
 window.getInit = async (init = false) => {
   if (init) {
     await getChannels() // schreibt alle Channels in "allchannels"
-    await checkStatus(false) // notify
+    await checkStatus(true) // init
   } else {
     await checkStatus()
   }
@@ -247,6 +254,7 @@ window.settingsReducer = ({ type, value }) => {
 
       LiveChannels = {}
       allChannels = []
+      allChannelsId = []
 
       browserAPI.storage.sync.clear(() => {
         window.alert('Settings deleted')
@@ -279,11 +287,10 @@ window.openLink = url => {
 
 const request = ({ url, clientID, OAuth }) => {
   return new Promise((resolve, reject) => {
-    // console.debug({ url, clientID, OAuth })
     const xhr = new XMLHttpRequest()
     xhr.open('GET', url + ((/\?/).test(url) ? '&' : '?') + new Date().getTime()) // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest#Bypassing_the_cache
     xhr.setRequestHeader('Accept', 'application/vnd.twitchtv.v5+json')
-    xhr.setRequestHeader('Authorization', OAuth)
+    if (OAuth) xhr.setRequestHeader('Authorization', OAuth)
     xhr.setRequestHeader('Client-ID', clientID)
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -319,13 +326,13 @@ const toDataURL = url => {
 }
 
 let tempGameIDList = []
-const checkStatus = (notify = true) => {
-  return new Promise(async (resolve, reject) => {
-    if (allChannels.length === 0) {
+const checkStatus = (init = false) => {
+  return new Promise(async resolve => {
+    if (allChannelsId.length === 0) {
       return
     }
-    const tempAllChannels = allChannels.map(row => row.id) // userId
 
+    const tempAllChannels = [...allChannelsId]
     const results = []
     while (tempAllChannels.length > 0) { // Split Array in Chunks
       results.push(tempAllChannels.splice(0, 100))
@@ -340,10 +347,10 @@ const checkStatus = (notify = true) => {
       }
     }
 
-    const LiveChannelsCopy = { ...LiveChannels }
-    const GameIDListCopy = { ...GameIDList }
+    const oldLiveChannels = Object.keys(LiveChannels)
+    const GameIDListCopy = Object.assign({}, GameIDList)
 
-    for (let i = 0, len = tempLiveChannels.length; i < len; i++) {
+    for (let i = tempLiveChannels.length; i--;) {
       const value = tempLiveChannels[i]
       value.nametoLowerCase = value.user_name.toLowerCase()
 
@@ -351,54 +358,60 @@ const checkStatus = (notify = true) => {
         console.warn(value, 'ist nicht Live')
       }
 
-      if (LiveChannelsCopy[value.nametoLowerCase]) { // Channel ist weiterhin Online
-        if (LiveChannelsCopy[value.nametoLowerCase].game_id !== value.game_id) { // Channel spielt nicht mehr das selbe Spiel
-          console.log(value.user_name, 'neues Spiel', LiveChannelsCopy[value.nametoLowerCase].game_id, '!==', value.game_id)
-          console.log(value)
+      if (LiveChannels[value.nametoLowerCase] && LiveChannels[value.nametoLowerCase].disable) {
+        continue
+      }
 
-          if (notify && windowSettings.changeGameChannels.indexOf(value.nametoLowerCase) !== -1) { // TODO: neues Spiel property
-            if (!GameIDList[value.game_id] && value.game_id !== '') { // eslint-disable-line camelcase
+      // console.log(i, LiveChannels, LiveChannels[value.nametoLowerCase], Object.keys(LiveChannels).length)
+      if (LiveChannels[value.nametoLowerCase]) { // Channel ist weiterhin Online
+        if (LiveChannels[value.nametoLowerCase].game_id !== value.game_id && LiveChannels[value.nametoLowerCase] !== '') { // Channel spielt nicht mehr das selbe Spiel
+          if (!init && windowSettings.changeGameChannels.indexOf(value.nametoLowerCase) !== -1) {
+            if (!GameIDList[value.game_id]) { // eslint-disable-line camelcase
               await getGameIDList(value.game_id)
             }
-            console.debug('notify', `${value.user_name} neues Spiel ${GameIDList[value.game_id]}`)
-
+            console.debug(`${value.user_name} neues Spiel ${GameIDList[value.game_id]}`)
             const iconUrl = await toDataURL(value.thumbnail_url.replace(/{width}|{height}/g, '256'))
             pushNotification({ channel: value.nametoLowerCase, title: `${value.user_name} (Game has changed)`, message: GameIDList[value.game_id] ? GameIDList[value.game_id] : 'undefined', iconUrl })
           }
 
-          if (!GameIDList[value.game_id] && value.game_id !== '') { // eslint-disable-line camelcase
+          if (!GameIDList[value.game_id]) { // eslint-disable-line camelcase
             tempGameIDList.push(value.game_id)
           }
         }
 
-        if (LiveChannelsCopy[value.nametoLowerCase].title !== value.title) { // Channel spielt nicht mehr das selbe Spiel
-          console.log(value.user_name, 'neuer Titel', LiveChannelsCopy[value.nametoLowerCase].title, '!==', value.title)
-          console.log(value)
-
-          if (notify && windowSettings.changeTitleChannels.indexOf(value.nametoLowerCase) !== -1) { // TODO: neuer Titel property
-            console.debug('notify', `${value.user_name} neuer Titel ${value.game_id}`)
+        if (LiveChannels[value.nametoLowerCase].title !== value.title) { // Channel spielt nicht mehr das selbe Spiel
+          console.debug(value.user_name, 'neuer Titel', LiveChannels[value.nametoLowerCase].title, '!==', value.title, { value })
+          if (!init && windowSettings.changeTitleChannels.indexOf(value.nametoLowerCase) !== -1) {
+            console.debug(`${value.user_name} neuer Titel ${value.title}`)
             const iconUrl = await toDataURL(value.thumbnail_url.replace(/{width}|{height}/g, '256'))
-            pushNotification({ channel: value.nametoLowerCase, title: `${value.user_name}, (new Title)`, message: value.title, iconUrl })
+            pushNotification({ channel: value.nametoLowerCase, title: `${value.user_name} (new Title)`, message: value.title, iconUrl })
           }
         }
 
-        delete LiveChannelsCopy[value.nametoLowerCase]
-        delete GameIDListCopy[value.game_id]
+        const indexOf = oldLiveChannels.indexOf(value.nametoLowerCase)
+        if (indexOf !== -1) {
+          oldLiveChannels.splice(indexOf, 1)
+        }
+        delete GameIDListCopy[value.game_id] // lösche jede GameID aus der Copy die verwendet werden, um später die GameIDs zu löschen die nicht genutzt werden
       } else {
-        if (notify) console.log(value.user_name, 'ist jetzt online')
+        if (!init) console.log(value.user_name, 'ist jetzt online')
+
         if (!GameIDList[value.game_id] && value.game_id !== '') { // eslint-disable-line camelcase
           tempGameIDList.push(value.game_id)
         }
 
-        if (notify && windowSettings.PriorityChannels.indexOf(value.nametoLowerCase) !== -1) {
-          console.debug('notify', `${value.user_name} is Online${value.viewer_count === 0 ? '' : ' (' + value.viewer_count + ')'}`)
+        if (!init && windowSettings.PriorityChannels.indexOf(value.nametoLowerCase) !== -1) {
+          console.debug(`${value.user_name} is Online${value.viewer_count === 0 ? '' : ' (' + value.viewer_count + ')'}`)
           const iconUrl = await toDataURL(value.thumbnail_url.replace(/{width}|{height}/g, '256'))
           pushNotification({ channel: value.nametoLowerCase, title: `${value.user_name} is Online${value.viewer_count === 0 ? '' : ' (' + value.viewer_count + ')'}`, message: `${value.title}`, iconUrl })
         }
       }
 
-      LiveChannels[value.user_name.toLowerCase()] = {
+      LiveChannels[value.nametoLowerCase] = {
+        source: (LiveChannels[value.nametoLowerCase] && LiveChannels[value.nametoLowerCase].source) ? LiveChannels[value.nametoLowerCase].source : 'rest',
         name: value.user_name,
+        user_id: value.user_id,
+        game: undefined,
         game_id: value.game_id,
         started_at: value.started_at,
         title: value.title,
@@ -408,16 +421,18 @@ const checkStatus = (notify = true) => {
       }
     }
 
-    for (let channel in LiveChannelsCopy) {
-      if (notify && windowSettings.isOfflineChannels.indexOf(channel) !== -1) {
-        console.log('isOffline', channel)
-        const chan = await request({ url: 'https://api.twitch.tv/kraken/users?login=' + channel, clientID: windowSettings.clientID, OAuth: 'Bearer ' + windowSettings.OAuth })
-        const targetChannel = chan.users[0]
-
-        const iconUrl = await toDataURL(targetChannel.logo)
-        pushNotification({ channel: targetChannel.display_name, title: `${targetChannel.display_name} is Offline`, iconUrl })
+    if (!init) {
+      for (let i = 0, len = oldLiveChannels.length; i < len; i++) {
+        const channel = LiveChannels[oldLiveChannels[i]].nametoLowerCase
+        if (LiveChannels[oldLiveChannels[i]].source === 'ws') { continue } // wird übersprungen, vermutlich ist der Channel im nächsten Durchlauf "live"
+        if (!init && windowSettings.isOfflineChannels.indexOf(channel) !== -1) {
+          // https://dev.twitch.tv/docs/v5/reference/users#get-user-by-id
+          const targetChannel = await request({ url: 'https://api.twitch.tv/kraken/users/' + LiveChannels[oldLiveChannels[i]].user_id, clientID: windowSettings.clientID })
+          const iconUrl = await toDataURL(targetChannel.logo)
+          pushNotification({ channel: targetChannel.display_name, title: `${targetChannel.display_name} is Offline`, iconUrl })
+        }
+        delete LiveChannels[oldLiveChannels[i]]
       }
-      delete LiveChannels[channel]
     }
 
     for (let gameId in GameIDListCopy) {
@@ -427,8 +442,8 @@ const checkStatus = (notify = true) => {
   })
 }
 
-const getGameIDList = (array = []) => { // TODO: Games in der Gamelist die nicht gebraucht werden sollten auch gelöscht werden
-  return new Promise(async (resolve, reject) => {
+const getGameIDList = (array = []) => {
+  return new Promise(async resolve => {
     if (array.length) {
       tempGameIDList = tempGameIDList.concat(array)
     }
@@ -505,6 +520,7 @@ const getChannels = () => {
       }
       i++
     }
+    allChannelsId = allChannels.map(row => row.id)
     resolve()
   })
 }

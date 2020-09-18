@@ -283,12 +283,12 @@ export default function Options () { // https://material-ui.com/components/table
   }
 
   const [filter, setfilter] = React.useState('')
-  const lowercasedFilter = filter.toLowerCase()
   let rows
-  if (lowercasedFilter === '') {
+  if (filter === '') {
     rows = allRows
   } else {
-    rows = allRows.filter(item => item.nametoLowerCase.indexOf(lowercasedFilter) !== -1)
+    const filterToLowerCase = filter.toLowerCase()
+    rows = allRows.filter(item => item.nametoLowerCase.indexOf(filterToLowerCase) !== -1)
   }
 
   const OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || ''

@@ -123,6 +123,10 @@ export default function Popup () {
     const data = streams[chanName]
     const game = data.game || GameIDList[data.game_id] || 'undefined'
 
+    if (data.disable) {
+      continue
+    }
+
     if (searchBar !== '') { // Filter Game
       if (chanName.toLowerCase().indexOf(searchBar) === -1 && game.toLowerCase().indexOf(searchBar) === -1) {
         continue
