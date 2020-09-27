@@ -154,7 +154,7 @@ const connect = () => {
             if (LiveChannels[chanName]) {
               LiveChannels[chanName].viewer_count = msg.viewers
             }
-          } else {
+          } else if (msg.type !== 'commercial') {
             console.warn('WS default:', chanName, msg) // {type: "commercial", server_time: 1600273745.207176, length: 60}
           }
           break
@@ -204,6 +204,9 @@ window.setPriorityChannelReducer = value => {
 
   browserAPI.storage.sync.set({ PriorityChannels: windowSettings.PriorityChannels }, () => {
     // console.debug('setPriorityChannelReducer saved', { PriorityChannels: windowSettings.PriorityChannels })
+    if (chrome.runtime.lastError) {
+      console.warn(chrome.runtime.lastError.message)
+    }
   })
 }
 
@@ -242,6 +245,9 @@ window.settingsReducer = ({ type, value }) => {
       windowSettings[value.name] = value.value
       browserAPI.storage.sync.set({ [value.name]: value.value }, () => {
         // console.debug('saved', { [value.name]: value.value })
+        if (chrome.runtime.lastError) {
+          console.warn(chrome.runtime.lastError.message)
+        }
       })
       break
     case 'GET':
@@ -258,6 +264,9 @@ window.settingsReducer = ({ type, value }) => {
 
       browserAPI.storage.sync.clear(() => {
         window.alert('Settings deleted')
+        if (chrome.runtime.lastError) {
+          console.warn(chrome.runtime.lastError.message)
+        }
       })
       return windowSettings
     default:
@@ -277,12 +286,16 @@ window.openStream = channelName => {
       browserAPI.tabs.create({ url: `chrome-extension://${chrome.runtime.id}/options.html` })
     }
   } else {
-    browserAPI.tabs.create({ url: 'https://www.twitch.tv/' + channelName.replace(/\s/g, '') })
+    window.openLink('https://www.twitch.tv/' + channelName.replace(/\s/g, ''))
   }
 }
 
 window.openLink = url => {
-  browserAPI.tabs.create({ url })
+  browserAPI.tabs.create({ url }, () => {
+    if (chrome.runtime.lastError) {
+      console.warn(chrome.runtime.lastError.message)
+    }
+  })
 }
 
 const request = ({ url, clientID, OAuth }) => {
@@ -548,19 +561,25 @@ const pushNotification = ({ channel = '', title = '', message = '', iconUrl }) =
       message,
       contextMessage: 'Twitch Live Monitor',
       buttons: [
-        { title: 'Open' }
+        { title: 'Open' },
+        { title: 'Close' }
       ]
     })
   }
 }
 
 if (isFirefox) { // without Buttons
-  browserAPI.notifications.onClicked.addListener(notificationId => {
-    browserAPI.tabs.create({ url: 'https://www.twitch.tv/' + notificationId })
-  })
+  // browserAPI.notifications.onClicked.addListener((notificationId, buttonIndex) => {
+  //   browserAPI.tabs.create({ url: 'https://www.twitch.tv/' + notificationId })
+  // })
 } else {
-  browserAPI.notifications.onButtonClicked.addListener(notificationId => {
-    browserAPI.tabs.create({ url: 'https://www.twitch.tv/' + notificationId })
+  browserAPI.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+    switch (buttonIndex) {
+      case 0: window.openLink('https://www.twitch.tv/' + notificationId.replace(/\s/g, '')); break // https://developer.chrome.com/extensions/tabs#method-create
+      case 1: browserAPI.notifications.clear(notificationId); break // https://developer.chrome.com/apps/notifications#method-clear
+      default:
+        console.warn({ notificationId, buttonIndex })
+    }
   })
 }
 
