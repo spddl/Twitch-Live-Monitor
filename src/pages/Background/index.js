@@ -15,7 +15,14 @@ let LiveChannels = {}
 const GameIDList = {}
 let allChannels = []
 let allChannelsId = []
-let windowSettings = {}
+let windowSettings = {
+  OAuth: '',
+  clientID: '',
+  PriorityChannels: [],
+  changeTitleChannels: [],
+  changeGameChannels: [],
+  isOfflineChannels: []
+}
 
 const storageGet = (params = null) => {
   return new Promise((resolve, reject) => {
@@ -215,23 +222,37 @@ window.setPropertyChannelReducer = (type, value) => {
     case 'isOnline':
       windowSettings.PriorityChannels = value
       browserAPI.storage.sync.set({ PriorityChannels: value }, () => {
-        // console.debug('setPriorityChannelReducer saved', { PriorityChannels: windowSettings.PriorityChannels })
+        if (chrome.runtime.lastError) {
+          console.warn(chrome.runtime.lastError.message)
+        }
       })
       break
 
     case 'changeTitle':
       windowSettings.changeTitleChannels = value
-      browserAPI.storage.sync.set({ changeTitleChannels: value }, () => {})
+      browserAPI.storage.sync.set({ changeTitleChannels: value }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn(chrome.runtime.lastError.message)
+        }
+      })
       break
 
     case 'changeGame':
       windowSettings.changeGameChannels = value
-      browserAPI.storage.sync.set({ changeGameChannels: value }, () => {})
+      browserAPI.storage.sync.set({ changeGameChannels: value }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn(chrome.runtime.lastError.message)
+        }
+      })
       break
 
     case 'isOffline':
       windowSettings.isOfflineChannels = value
-      browserAPI.storage.sync.set({ isOfflineChannels: value }, () => {})
+      browserAPI.storage.sync.set({ isOfflineChannels: value }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn(chrome.runtime.lastError.message)
+        }
+      })
       break
 
     default:
@@ -256,7 +277,14 @@ window.settingsReducer = ({ type, value }) => {
       return windowSettings
     case 'CLEAR':
       browserAPI.browserAction.setBadgeText({ text: '0' })
-      windowSettings = {}
+      windowSettings = {
+        OAuth: '',
+        clientID: '',
+        PriorityChannels: [],
+        changeTitleChannels: [],
+        changeGameChannels: [],
+        isOfflineChannels: []
+      }
 
       LiveChannels = {}
       allChannels = []

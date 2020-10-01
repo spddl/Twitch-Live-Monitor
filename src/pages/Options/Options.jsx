@@ -442,7 +442,7 @@ export default function Options () { // https://material-ui.com/components/table
                             scope='row'
                             padding='none'
                           >
-                            <Link href={'https://www.twitch.tv/' + row.name} color='inherit' target='_blank' rel='noopener'>
+                            <Link href={'https://www.twitch.tv/' + row.name} color='inherit' target='_blank' rel='noopener noreferrer'> {/* https://www.pixelstech.net/article/1537002042-The-danger-of-target=_blank-and-opener */}
                               {row.name}
                             </Link>
                             {/* <Link href='#' onClick={() => background.openLink('https://www.twitch.tv/' + row.name)} color='inherit' style={{ cursor: 'pointer' }}>
