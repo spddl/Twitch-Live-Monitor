@@ -338,7 +338,7 @@ const request = ({ url, clientID, OAuth }) => {
         resolve(JSON.parse(xhr.responseText))
       } else {
         console.warn(url, xhr.statusText, xhr.responseText, 'oAuth', OAuth)
-        window.alert(url, xhr.responseText)
+        // window.alert(url + " " + xhr.responseText)
         reject(xhr.statusText)
       }
     })
@@ -406,7 +406,7 @@ const checkStatus = (init = false) => {
       // console.log(i, LiveChannels, LiveChannels[value.nametoLowerCase], Object.keys(LiveChannels).length)
       if (LiveChannels[value.nametoLowerCase]) { // Channel ist weiterhin Online
         if (LiveChannels[value.nametoLowerCase].game_id !== value.game_id && LiveChannels[value.nametoLowerCase] !== '') { // Channel spielt nicht mehr das selbe Spiel
-          if (!init && windowSettings.changeGameChannels.indexOf(value.nametoLowerCase) !== -1) {
+          if (!init && windowSettings && windowSettings.changeGameChannels && windowSettings.changeGameChannels.indexOf(value.nametoLowerCase) !== -1) {
             if (!GameIDList[value.game_id]) { // eslint-disable-line camelcase
               await getGameIDList(value.game_id)
             }
@@ -422,7 +422,7 @@ const checkStatus = (init = false) => {
 
         if (LiveChannels[value.nametoLowerCase].title !== value.title) { // Channel spielt nicht mehr das selbe Spiel
           console.debug(value.user_name, 'neuer Titel', LiveChannels[value.nametoLowerCase].title, '!==', value.title, { value })
-          if (!init && windowSettings.changeTitleChannels.indexOf(value.nametoLowerCase) !== -1) {
+          if (!init && windowSettings && windowSettings.changeTitleChannels && windowSettings.changeTitleChannels.indexOf(value.nametoLowerCase) !== -1) {
             console.debug(`${value.user_name} neuer Titel ${value.title}`)
             const iconUrl = await toDataURL(value.thumbnail_url.replace(/{width}|{height}/g, '256'))
             pushNotification({ channel: value.nametoLowerCase, title: `${value.user_name} (new Title)`, message: value.title, iconUrl })
@@ -441,7 +441,16 @@ const checkStatus = (init = false) => {
           tempGameIDList.push(value.game_id)
         }
 
-        if (!init && windowSettings.PriorityChannels.indexOf(value.nametoLowerCase) !== -1) {
+        try {
+          if (!init && windowSettings.PriorityChannels.indexOf(value.nametoLowerCase) !== -1) {
+            // Test
+          }
+        } catch (error) {
+          console.debug(error)
+          console.debug({ windowSettings })
+        }
+
+        if (!init && windowSettings && windowSettings.PriorityChannels && windowSettings.PriorityChannels.indexOf(value.nametoLowerCase) !== -1) {
           console.debug(`${value.user_name} is Online${value.viewer_count === 0 ? '' : ' (' + value.viewer_count + ')'}`)
           const iconUrl = await toDataURL(value.thumbnail_url.replace(/{width}|{height}/g, '256'))
           pushNotification({ channel: value.nametoLowerCase, title: `${value.user_name} is Online${value.viewer_count === 0 ? '' : ' (' + value.viewer_count + ')'}`, message: `${value.title}`, iconUrl })
@@ -466,7 +475,7 @@ const checkStatus = (init = false) => {
       for (let i = 0, len = oldLiveChannels.length; i < len; i++) {
         const channel = LiveChannels[oldLiveChannels[i]].nametoLowerCase
         if (LiveChannels[oldLiveChannels[i]].source === 'ws') { continue } // wird übersprungen, vermutlich ist der Channel im nächsten Durchlauf "live"
-        if (!init && windowSettings.isOfflineChannels.indexOf(channel) !== -1) {
+        if (!init && windowSettings && windowSettings.isOfflineChannels && windowSettings.isOfflineChannels.indexOf(channel) !== -1) {
           // https://dev.twitch.tv/docs/v5/reference/users#get-user-by-id
           const targetChannel = await request({ url: 'https://api.twitch.tv/kraken/users/' + LiveChannels[oldLiveChannels[i]].user_id, clientID: windowSettings.clientID })
           const iconUrl = await toDataURL(targetChannel.logo)
@@ -503,7 +512,7 @@ const getGameIDList = (array = []) => {
         })
       }, reason => {
         console.warn('// getGameIDList() rejection', reason)
-        window.alert(reason)
+        // window.alert(reason)
       })
       tempGameIDList = []
     }
@@ -552,7 +561,7 @@ const getChannels = () => {
       } catch (error) {
         if (error) {
           console.warn('// getChannels() rejection', error)
-          window.alert(error)
+          // window.alert(error)
         }
       }
 
