@@ -27,7 +27,10 @@ let windowSettings = {
 const storageGet = (params = null) => {
   return new Promise((resolve, reject) => {
     browserAPI.storage.sync.get(params, result => {
-      resolve(result)
+      resolve({
+        ...windowSettings,
+        ...result
+      })
     })
   })
 }
@@ -38,6 +41,8 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
     if (urlRegex !== null) {
       window.settingsReducer({ type: 'SET', value: { name: 'OAuth', value: urlRegex[1] } })
       const { OAuth, clientID, userID, accountnameInput } = window.settingsReducer({ type: 'GETALL' }) || {}
+      browserAPI.tabs.onCreated.removeListener(OAuthListener)
+      console.debug({ OAuth, clientID, userID, accountnameInput })
       if (!userID) {
         const url = 'https://api.twitch.tv/kraken/users?login=' + accountnameInput
         request({ url, clientID, OAuth }).then(data => {
@@ -54,7 +59,6 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
           } else {
             browserAPI.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
           }
-          browserAPI.tabs.onCreated.removeListener(OAuthListener)
         })
       } else {
         window.getInit(true)
@@ -63,7 +67,6 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
         } else {
           browserAPI.tabs.update(tab.id, { url: `chrome-extension://${chrome.runtime.id}/options.html` })
         }
-        browserAPI.tabs.onCreated.removeListener(OAuthListener)
       }
     }
   }
@@ -403,7 +406,6 @@ const checkStatus = (init = false) => {
         continue
       }
 
-      // console.log(i, LiveChannels, LiveChannels[value.nametoLowerCase], Object.keys(LiveChannels).length)
       if (LiveChannels[value.nametoLowerCase]) { // Channel ist weiterhin Online
         if (LiveChannels[value.nametoLowerCase].game_id !== value.game_id && LiveChannels[value.nametoLowerCase] !== '') { // Channel spielt nicht mehr das selbe Spiel
           if (!init && windowSettings && windowSettings.changeGameChannels && windowSettings.changeGameChannels.indexOf(value.nametoLowerCase) !== -1) {
@@ -439,15 +441,6 @@ const checkStatus = (init = false) => {
 
         if (!GameIDList[value.game_id] && value.game_id !== '') { // eslint-disable-line camelcase
           tempGameIDList.push(value.game_id)
-        }
-
-        try {
-          if (!init && windowSettings.PriorityChannels.indexOf(value.nametoLowerCase) !== -1) {
-            // Test
-          }
-        } catch (error) {
-          console.debug(error)
-          console.debug({ windowSettings })
         }
 
         if (!init && windowSettings && windowSettings.PriorityChannels && windowSettings.PriorityChannels.indexOf(value.nametoLowerCase) !== -1) {

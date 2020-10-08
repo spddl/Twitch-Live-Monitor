@@ -386,7 +386,7 @@ export default function Options () { // https://material-ui.com/components/table
   if (userID !== '' && OAuth !== '' && state.accountname !== '' && rows.length === 0 && filter === '') {
     NotificationTable =
       <Grid item xs={12}>
-        <Typography variant='h4' component='h2' onClick={window.location.reload(false)}>
+        <Typography variant='h4' component='h2' onClick={() => window.location.reload(false)}>
           Try to Reload
         </Typography>
       </Grid >
@@ -555,7 +555,6 @@ export default function Options () { // https://material-ui.com/components/table
               Clear Data
             </Button>
           </Grid>
-
           {NotificationTable}
         </Grid >
       </Container >
