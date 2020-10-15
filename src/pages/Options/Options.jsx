@@ -192,7 +192,11 @@ const EnhancedTableToolbar = props => {
           variant='subtitle1'
           component='div'
         >
-          {numSelected} selected
+          {numSelected}/50 selected,
+          {numSelected < 51
+            ? ' Realtime Online Notification activated'
+            : ' Realtime Online Notification deactivated'
+          }
         </Typography>
       ) : (
         <Typography

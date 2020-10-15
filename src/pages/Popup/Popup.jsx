@@ -127,7 +127,7 @@ export default function Popup () {
       continue
     }
 
-    if (searchBar !== '') { // Filter Game
+    if (searchBar !== '') { // Filter Game or Streamer
       if (chanName.toLowerCase().indexOf(searchBar) === -1 && game.toLowerCase().indexOf(searchBar) === -1) {
         continue
       }
@@ -136,14 +136,14 @@ export default function Popup () {
     if (viewData.find(ele => ele.game === game)) { // Spiel gefunden
       viewData.map(name => {
         if (name.game === game) {
-          name.streamer.push({ name: chanName, title: data.title, started_at: data.started_at, viewer_count: data.viewer_count, type: data.type, game_id: data.game_id, thumbnail_url: data.thumbnail_url ? data.thumbnail_url.replace(/{width}|{height}/g, '40') : '' }) // neuer Streamer wird hinzugefügt
+          name.streamer.push({ name: data.name, title: data.title, started_at: data.started_at, viewer_count: data.viewer_count, type: data.type, game_id: data.game_id, thumbnail_url: data.thumbnail_url ? data.thumbnail_url.replace(/{width}|{height}/g, '40') : '' }) // neuer Streamer wird hinzugefügt
         }
         return null
       })
     } else {
       viewData.push({ // erster Streamer in diesem Spiel
         game,
-        streamer: [{ name: chanName, title: data.title, started_at: data.started_at, viewer_count: data.viewer_count, type: data.type, game_id: data.game_id, thumbnail_url: data.thumbnail_url ? data.thumbnail_url.replace(/{width}|{height}/g, '40') : '' }]
+        streamer: [{ name: data.name, title: data.title, started_at: data.started_at, viewer_count: data.viewer_count, type: data.type, game_id: data.game_id, thumbnail_url: data.thumbnail_url ? data.thumbnail_url.replace(/{width}|{height}/g, '40') : '' }]
       })
     }
   }
@@ -177,21 +177,21 @@ export default function Popup () {
       }
       {viewData.length !== 0 &&
       <List className={classes.root + ' ' + ((checkboxDarkMode || false) ? 'DarkMode' : 'BrightMode')} subheader={<li />} dense={checkboxDense || false} >
-        {viewData.map((channelName, index) => (
+        {viewData.sort((a, b) => a.game.localeCompare(b.game)).map((channelName, index) => (
           <li key={`section-${index}`} className={classes.listSection}>
             <ul className={classes.ul}>
               <ListSubheader>{channelName.game}</ListSubheader>
-              {channelName.streamer.map((channel, i) => (
+              {channelName.streamer.sort((a, b) => a.name.localeCompare(b.name)).map((channel, i) => (
                 <ListItem button key={`item-${index}-${channel.name}`}>
                   {checkboxThumbnail &&
-                  <ListItemAvatar>
-                    <Avatar
-                      variant='rounded'
-                      imgProps={{ async: 'on', loading: 'lazy' }}
-                      alt={channel.name}
-                      src={channel.thumbnail_url}
-                    />
-                  </ListItemAvatar>
+                    <ListItemAvatar>
+                      <Avatar
+                        variant='rounded'
+                        imgProps={{ async: 'on', loading: 'lazy' }}
+                        alt={channel.name}
+                        src={channel.thumbnail_url}
+                      />
+                    </ListItemAvatar>
                   }
                   <ListItemText
                     primary={channel.name}
