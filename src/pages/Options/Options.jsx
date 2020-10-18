@@ -388,6 +388,7 @@ export default function Options () { // https://material-ui.com/components/table
 
   let NotificationTable
   if (userID !== '' && OAuth !== '' && state.accountname !== '' && rows.length === 0 && filter === '') {
+    console.debug({ userID, OAuth, stateAccountName: state.accountname, rowsLength: rows.length, filter, state })
     NotificationTable =
       <Grid item xs={12}>
         <Typography variant='h4' component='h2' onClick={() => window.location.reload(false)}>
