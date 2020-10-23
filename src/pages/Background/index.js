@@ -21,7 +21,9 @@ let windowSettings = {
   PriorityChannels: [],
   changeTitleChannels: [],
   changeGameChannels: [],
-  isOfflineChannels: []
+  isOfflineChannels: [],
+  popupFirstLine: '{channelName}',
+  popupSecondLine: 'viewer: {viewerCount}, uptime: {timeAgo}'
 }
 
 const storageGet = (params = null) => {

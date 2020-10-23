@@ -12,7 +12,6 @@ import Checkbox from '@material-ui/core/Checkbox'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
 import FormControl from '@material-ui/core/FormControl'
 
-import PropTypes from 'prop-types'
 import clsx from 'clsx'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
@@ -26,6 +25,17 @@ import Toolbar from '@material-ui/core/Toolbar'
 import Typography from '@material-ui/core/Typography'
 import Paper from '@material-ui/core/Paper'
 import Link from '@material-ui/core/Link'
+import Dialog from '@material-ui/core/Dialog'
+import DialogActions from '@material-ui/core/DialogActions'
+import DialogContent from '@material-ui/core/DialogContent'
+import DialogContentText from '@material-ui/core/DialogContentText'
+import DialogTitle from '@material-ui/core/DialogTitle'
+import Chip from '@material-ui/core/Chip'
+// import Divider from '@material-ui/core/Divider'
+
+import Snackbar from '@material-ui/core/Snackbar'
+import IconButton from '@material-ui/core/IconButton'
+import CloseIcon from '@material-ui/icons/Close'
 
 const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
@@ -49,6 +59,81 @@ browserAPI.storage.sync.get('clientID', result => {
 })
 
 const allRows = background.getAllChannels()
+
+const useToolbarStyles = makeStyles(theme => ({
+  root: {
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(1)
+  },
+  highlight:
+    theme.palette.type === 'light'
+      ? {
+        color: theme.palette.secondary.main,
+        backgroundColor: lighten(theme.palette.secondary.light, 0.85)
+      }
+      : {
+        color: theme.palette.text.primary,
+        backgroundColor: theme.palette.secondary.dark
+      },
+  title: {
+    flex: '1 1 100%'
+  }
+}))
+
+const TwitchButton = withStyles(theme => ({
+  root: {
+    color: theme.palette.getContrastText('#6441A4'),
+    backgroundColor: '#6441A4',
+    '&:hover': {
+      backgroundColor: '#956dd6'
+    }
+  }
+}))(Button)
+
+const useStyles = makeStyles(theme => ({
+  root: {
+    display: 'flex',
+    flexWrap: 'wrap'
+  },
+  textField: {
+    marginLeft: theme.spacing(1),
+    marginRight: theme.spacing(1),
+    width: '25ch'
+  },
+  paper: {
+    width: '100%',
+    marginBottom: theme.spacing(2)
+  },
+  searchBar: {
+    margin: theme.spacing(1)
+  },
+  table: {
+    minWidth: 750
+  },
+  visuallyHidden: {
+    border: 0,
+    clip: 'rect(0 0 0 0)',
+    height: 1,
+    margin: -1,
+    overflow: 'hidden',
+    padding: 0,
+    position: 'absolute',
+    top: 20,
+    width: 1
+  },
+  heading: {
+    fontSize: theme.typography.pxToRem(15),
+    fontWeight: theme.typography.fontWeightRegular
+  },
+  chipDiv: {
+    display: 'flex',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    '& > *': {
+      margin: theme.spacing(0.5)
+    }
+  }
+}))
 
 function descendingComparator (a, b, orderBy) {
   if (b[orderBy] < a[orderBy]) {
@@ -135,46 +220,6 @@ function EnhancedTableHead (props) {
   )
 }
 
-EnhancedTableHead.propTypes = {
-  classes: PropTypes.object.isRequired,
-  numSelected: PropTypes.number.isRequired,
-  onRequestSort: PropTypes.func.isRequired,
-  onSelectAllClick: PropTypes.func.isRequired,
-  order: PropTypes.oneOf(['asc', 'desc']).isRequired,
-  orderBy: PropTypes.string.isRequired,
-  rowCount: PropTypes.number.isRequired
-}
-
-const useToolbarStyles = makeStyles(theme => ({
-  root: {
-    paddingLeft: theme.spacing(2),
-    paddingRight: theme.spacing(1)
-  },
-  highlight:
-    theme.palette.type === 'light'
-      ? {
-        color: theme.palette.secondary.main,
-        backgroundColor: lighten(theme.palette.secondary.light, 0.85)
-      }
-      : {
-        color: theme.palette.text.primary,
-        backgroundColor: theme.palette.secondary.dark
-      },
-  title: {
-    flex: '1 1 100%'
-  }
-}))
-
-const TwitchButton = withStyles(theme => ({
-  root: {
-    color: theme.palette.getContrastText('#6441A4'),
-    backgroundColor: '#6441A4',
-    '&:hover': {
-      backgroundColor: '#956dd6'
-    }
-  }
-}))(Button)
-
 const EnhancedTableToolbar = props => {
   const classes = useToolbarStyles()
   const { numSelected } = props
@@ -205,53 +250,14 @@ const EnhancedTableToolbar = props => {
           id='tableTitle'
           component='div'
         >
-            Notification when these channels go live:
+          Notification when these channels go live:
         </Typography>
       )}
     </Toolbar>
   )
 }
 
-EnhancedTableToolbar.propTypes = {
-  numSelected: PropTypes.number.isRequired
-}
-
-const useStyles = makeStyles(theme => ({
-  root: {
-    display: 'flex',
-    flexWrap: 'wrap'
-  },
-  textField: {
-    marginLeft: theme.spacing(1),
-    marginRight: theme.spacing(1),
-    width: '25ch'
-  },
-  paper: {
-    width: '100%',
-    marginBottom: theme.spacing(2)
-  },
-
-  searchBar: {
-    margin: theme.spacing(1)
-  },
-
-  table: {
-    minWidth: 750
-  },
-  visuallyHidden: {
-    border: 0,
-    clip: 'rect(0 0 0 0)',
-    height: 1,
-    margin: -1,
-    overflow: 'hidden',
-    padding: 0,
-    position: 'absolute',
-    top: 20,
-    width: 1
-  }
-}))
-
-const save = state => {
+const save = () => {
   const OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || false
   if (!OAuth) {
     background.createOAuthListener()
@@ -271,6 +277,8 @@ export default function Options () { // https://material-ui.com/components/table
   const [selectedChangeGame, setSelectedChangeGame] = React.useState(background.settingsReducer({ type: 'GET', value: { name: 'changeGameChannels' } }) || [])
   const [selectedIsOffline, setSelectedIsOffline] = React.useState(background.settingsReducer({ type: 'GET', value: { name: 'isOfflineChannels' } }) || [])
 
+  const [openDialogPopup, setOpenDialogPopup] = React.useState(false)
+
   const [page, setPage] = React.useState(0)
   const [rowsPerPage, setRowsPerPage] = React.useState(25)
   const [state, setState] = React.useState({
@@ -279,8 +287,27 @@ export default function Options () { // https://material-ui.com/components/table
     checkboxDense: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDense' } }) || false,
     checkboxTwoLines: background.settingsReducer({ type: 'GET', value: { name: 'checkboxTwoLines' } }) || false,
     checkboxDarkMode: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDarkMode' } }) || false,
-    checkboxThumbnail: background.settingsReducer({ type: 'GET', value: { name: 'checkboxThumbnail' } }) || false
+    checkboxThumbnail: background.settingsReducer({ type: 'GET', value: { name: 'checkboxThumbnail' } }) || false,
+    popupFirstLine: background.settingsReducer({ type: 'GET', value: { name: 'popupFirstLine' } }) || '',
+    popupSecondLine: background.settingsReducer({ type: 'GET', value: { name: 'popupSecondLine' } }) || ''
   })
+  const [openSnackbar, setOpenSnackbar] = React.useState(false)
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return
+    }
+    setOpenSnackbar(false)
+  }
+
+  const handleClickOpenDialogPopup = () => { setOpenDialogPopup(true) }
+  const handleCloseDialogPopup = () => { setOpenDialogPopup(false) }
+
+  const copyClick = name => {
+    navigator.clipboard.writeText(name).then(() => { // https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API
+      setOpenSnackbar(true)
+    })
+  }
+
   let rowsPerPageOptions = [25, 50, 100, 200]
   if (allRows.length > 200) {
     rowsPerPageOptions.push(allRows.length)
@@ -370,12 +397,15 @@ export default function Options () { // https://material-ui.com/components/table
     setPage(0)
   }
 
-  const handleChange = event => {
-    event.persist()
+  const handleChange = async event => {
+    if (event.persist) {
+      event.persist()
+    }
     const name = event.target.name
     let value
-
-    if (name === 'accountnameInput' || name === 'updateRate') {
+    if (name === 'accountnameInput' ||
+        name === 'popupFirstLine' ||
+        name === 'popupSecondLine') {
       value = event.target.value
     } else {
       value = event.target.checked
@@ -551,8 +581,68 @@ export default function Options () { // https://material-ui.com/components/table
             />
           </Grid>
 
+          <Grid container item>
+
+            <Button variant='outlined' color='secondary' onClick={handleClickOpenDialogPopup}>
+                Edit Popup Template
+            </Button>
+            <Dialog open={openDialogPopup} onClose={handleCloseDialogPopup} aria-labelledby='form-dialog-title'>
+              <DialogTitle id='form-dialog-title'>Popup Template</DialogTitle>
+              <DialogContent>
+                <DialogContentText>
+                It is possible to change the content of the line, in addition we use variables which are later replaced by the correct value.
+                </DialogContentText>
+
+                Copy some Var's
+                <div className={classes.chipDiv}>
+                  <Chip label='{channelName}' variant='outlined' color='primary' onClick={() => copyClick('{channelName}')} />
+                  <Chip label='{timeAgo}' variant='outlined' color='primary' onClick={() => copyClick('{timeAgo}')} />
+                  <Chip label='{viewerCount}' variant='outlined' color='primary' onClick={() => copyClick('{viewerCount}')} />
+                  <Chip label='{startedAt}' variant='outlined' color='primary' onClick={() => copyClick('{startedAt}')} />
+                  <Chip label='{title}' variant='outlined' color='primary' onClick={() => copyClick('{title}')} />
+                </div>
+
+                <TextField
+                  autoFocus
+                  margin='dense'
+                  name='popupFirstLine'
+                  label='First Line'
+                  type='text'
+                  fullWidth
+                  value={state.popupFirstLine}
+                  onChange={handleChange}
+                />
+
+                <TextField
+                  autoFocus
+                  margin='dense'
+                  name='popupSecondLine'
+                  label='Second Line'
+                  type='text'
+                  fullWidth
+                  value={state.popupSecondLine}
+                  onChange={handleChange}
+                  disabled={!state.checkboxTwoLines}
+                />
+              </DialogContent>
+              <DialogActions>
+                <Button color='primary' onClick={() => {
+                  handleCloseDialogPopup()
+                  handleChange({ target: { name: 'popupFirstLine', value: '{channelName}' } })
+                  handleChange({ target: { name: 'popupSecondLine', value: 'viewer: {viewerCount}, uptime: {timeAgo}' } })
+                }}>
+                  Reset to default
+                </Button>
+                <Button onClick={handleCloseDialogPopup} color='primary'>
+                  OK
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+          </Grid>
+
           <Grid container item justify='space-between'>
-            <TwitchButton variant='contained' color='primary' onClick={() => save(state)} disabled={state.accountnameInput === '' || state.accountnameInput === state.accountname}>
+            <TwitchButton variant='contained' color='primary' onClick={() => save()} disabled={state.accountnameInput === '' || state.accountnameInput === state.accountname}>
               Twitch Login
             </TwitchButton>
 
@@ -562,6 +652,25 @@ export default function Options () { // https://material-ui.com/components/table
           </Grid>
           {NotificationTable}
         </Grid >
+
+        <Snackbar
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left'
+          }}
+          open={openSnackbar}
+          autoHideDuration={600}
+          onClose={handleSnackbarClose}
+          message='Copy'
+          action={
+            <React.Fragment>
+              <IconButton size='small' aria-label='close' color='inherit' onClick={handleSnackbarClose}>
+                <CloseIcon fontSize='small' />
+              </IconButton>
+            </React.Fragment>
+          }
+        />
+
       </Container >
     </React.Fragment >
   )

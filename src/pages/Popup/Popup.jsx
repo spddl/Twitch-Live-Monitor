@@ -90,12 +90,53 @@ function timeAgo (timeStamp, now) {
   }
 }
 
+const PromiseType = /{channelName}|{timeAgo}|{viewerCount}|{startedAt}|{title}|{type}|{gameID}/g
+const AwaitFunctionsSync = function ({ name, channel }) {
+  switch (name) {
+    case '{channelName}': return channel.name
+    case '{timeAgo}': return timeAgo(channel.started_at, now)
+    case '{viewerCount}': return channel.viewer_count
+    case '{startedAt}': return channel.started_at
+    case '{title}': return channel.title
+    case '{type}': return channel.type
+    case '{gameID}': return channel.game_id
+    default:
+      return 'unknown'
+  }
+}
+
+const getTemplateData = (template, channel) => {
+  const FunctionsFound = PromiseType[Symbol.match](template)
+  if (FunctionsFound) {
+    try {
+      const target = FunctionsFound.map(name => AwaitFunctionsSync({ name, channel }))
+      for (let i = 0; i < FunctionsFound.length; i++) {
+        template = template.replace(FunctionsFound[i], target[i])
+      }
+      return template
+    } catch (err) {
+      console.error('err', err)
+      return 'Error'
+    }
+  } else {
+    return template
+  }
+}
+
+let now
 export default function Popup () {
   const classes = useStyles()
 
   const [pressed, setPressed] = React.useState([])
 
-  const { checkboxDense, checkboxTwoLines, checkboxDarkMode, checkboxThumbnail } = background.settingsReducer({ type: 'GETALL' }) || {}
+  const {
+    checkboxDense,
+    checkboxTwoLines,
+    checkboxDarkMode,
+    checkboxThumbnail,
+    popupFirstLine,
+    popupSecondLine
+  } = background.settingsReducer({ type: 'GETALL' }) || {}
 
   const streams = background.getStreams()
 
@@ -155,7 +196,27 @@ export default function Popup () {
     })
   }
 
-  const now = new Date().getTime()
+  now = new Date().getTime() // set global var
+
+  // const [data, updateData] = React.useState({})
+  // React.useEffect(() => {
+  //   const getData = async () => {
+  //     for (const chanName in streams) {
+  //       const data = streams[chanName]
+  //       const firstLine = await getTemplateData(popupFirstLine, data)
+  //       let secondLine
+  //       if (checkboxTwoLines) {
+  //         secondLine = await getTemplateData(popupSecondLine, data)
+  //       }
+  //       updateData((prevState, props) => {
+  //         return { ...prevState, [data.name]: { firstLine, secondLine } }
+  //       })
+  //     }
+  //   }
+  //   console.time('getTemplateData')
+  //   getData()
+  //   console.timeEnd('getTemplateData')
+  // }, [])
 
   return (
     <>
@@ -193,9 +254,10 @@ export default function Popup () {
                       />
                     </ListItemAvatar>
                   }
+
                   <ListItemText
-                    primary={channel.name}
-                    secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? `viewer: ${channel.viewer_count}, uptime: ${timeAgo(channel.started_at, now)}` : null}
+                    primary={getTemplateData(popupFirstLine, channel)}
+                    secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? getTemplateData(popupSecondLine, channel) : null}
                     onMouseDown={() => { background.openStream(channel.name); window.close() }}
                   />
                 </ListItem>
