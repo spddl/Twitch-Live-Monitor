@@ -243,7 +243,11 @@ export default function Popup () {
             <ul className={classes.ul}>
               <ListSubheader>{channelName.game}</ListSubheader>
               {channelName.streamer.sort((a, b) => a.name.localeCompare(b.name)).map((channel, i) => (
-                <ListItem button key={`item-${index}-${channel.name}`}>
+                <ListItem
+                  button
+                  key={`item-${index}-${channel.name}`}
+                  onMouseDown={() => { background.openStream(channel.name); window.close() }}
+                >
                   {checkboxThumbnail &&
                     <ListItemAvatar>
                       <Avatar
@@ -254,11 +258,9 @@ export default function Popup () {
                       />
                     </ListItemAvatar>
                   }
-
                   <ListItemText
                     primary={getTemplateData(popupFirstLine, channel)}
                     secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? getTemplateData(popupSecondLine, channel) : null}
-                    onMouseDown={() => { background.openStream(channel.name); window.close() }}
                   />
                 </ListItem>
               ))}
