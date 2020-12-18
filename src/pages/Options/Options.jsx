@@ -50,13 +50,13 @@ const background = browserAPI.extension.getBackgroundPage()
 //   console.debug('// DEBUG: chrome.storage.sync', result)
 // })
 
-const clientIDApp = 's8gs9idntg25gl66k3w73y7ck02a6r'
+// const clientIDApp = 's8gs9idntg25gl66k3w73y7ck02a6r'
 
-browserAPI.storage.sync.get('clientID', result => {
-  if (result.clientID !== clientIDApp) { // https://developer.chrome.com/extensions/storage
-    background.settingsReducer({ type: 'SET', value: { name: 'clientID', value: clientIDApp } })
-  }
-})
+// browserAPI.storage.sync.get('clientID', result => {
+//   if (result.clientID !== clientIDApp) { // https://developer.chrome.com/extensions/storage
+//     background.settingsReducer({ type: 'SET', value: { name: 'clientID', value: clientIDApp } })
+//   }
+// })
 
 const allRows = background.getAllChannels()
 
@@ -260,10 +260,7 @@ const EnhancedTableToolbar = props => {
 const save = () => {
   const OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || false
   if (!OAuth) {
-    background.createOAuthListener()
-    browserAPI.tabs.getCurrent(tab => {
-      browserAPI.tabs.update(tab.id, { url: `https://id.twitch.tv/oauth2/authorize?client_id=${clientIDApp}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
-    })
+    background.createNewOAuth()
   }
 }
 

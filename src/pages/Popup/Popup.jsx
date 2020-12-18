@@ -1,73 +1,22 @@
 /* global chrome, browser, window */
 
 import React from 'react'
-import { makeStyles } from '@material-ui/core/styles'
 import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
 import ListItemText from '@material-ui/core/ListItemText'
 import ListSubheader from '@material-ui/core/ListSubheader'
-// import useMediaQuery from '@material-ui/core/useMediaQuery'
 import InputBase from '@material-ui/core/InputBase'
-import SearchIcon from '@material-ui/icons/Search'
 import ListItemAvatar from '@material-ui/core/ListItemAvatar'
 import Avatar from '@material-ui/core/Avatar'
+import Paper from '@material-ui/core/Paper'
+import IconButton from '@material-ui/core/IconButton'
+import SearchIcon from '@material-ui/icons/Search'
+import './Popup.css'
 
 const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
 
 const background = browserAPI.extension.getBackgroundPage()
-
-const useStyles = makeStyles(theme => ({
-  root: {
-    width: '100%',
-    maxWidth: 800,
-    backgroundColor: theme.palette.background.paper,
-    position: 'relative',
-    overflow: 'auto',
-    maxHeight: 592
-  },
-  listSection: {
-    backgroundColor: 'inherit'
-  },
-  ul: {
-    backgroundColor: 'inherit',
-    padding: 0
-  },
-  search: {
-    position: 'relative',
-    borderRadius: theme.shape.borderRadius,
-    marginLeft: 0,
-    width: '100%',
-    [theme.breakpoints.up('sm')]: {
-      marginLeft: theme.spacing(1),
-      width: 'auto'
-    }
-  },
-  searchIcon: {
-    padding: theme.spacing(0, 2),
-    height: '100%',
-    position: 'absolute',
-    pointerEvents: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  inputRoot: {
-    color: 'inherit'
-  },
-  inputInput: {
-    padding: theme.spacing(1, 1, 1, 0),
-    paddingLeft: `calc(1em + ${theme.spacing(4)}px)`,
-    transition: theme.transitions.create('width'),
-    width: '100%',
-    [theme.breakpoints.up('sm')]: {
-      width: '12ch',
-      '&:focus': {
-        width: '20ch'
-      }
-    }
-  }
-}))
 
 const zeroPad2 = num => num < 10 ? '0' + num : num
 function timeAgo (timeStamp, now) {
@@ -123,12 +72,9 @@ const getTemplateData = (template, channel) => {
   }
 }
 
-let now
-export default function Popup () {
-  const classes = useStyles()
-
+const now = new Date().getTime()
+export default React.memo(function Popup () {
   const [pressed, setPressed] = React.useState([])
-
   const {
     checkboxDense,
     checkboxTwoLines,
@@ -142,7 +88,15 @@ export default function Popup () {
 
   const handleKeyDown = React.useCallback(event => {
     const { key, keyCode } = event
-    if (keyCode === 8 || keyCode === 46) { // Delete
+    if (keyCode === 13) { // Enter
+      const selected = document.getElementsByClassName('Mui-focusVisible')
+      if (selected.length === 0) { // First Item
+        background.openStream(viewData[0].streamer[0].name)
+      } else { // selected Item
+        background.openStream(selected[0].id)
+      }
+      window.close()
+    } else if (keyCode === 8 || keyCode === 46) { // Delete
       setPressed([])
     } else if ((keyCode > 64 && keyCode < 91 /* a - z */) || (keyCode > 47 && keyCode < 58 /* 0 - 9 */)) {
       setPressed([...pressed, key])
@@ -196,59 +150,79 @@ export default function Popup () {
     })
   }
 
-  now = new Date().getTime() // set global var
-
-  // const [data, updateData] = React.useState({})
-  // React.useEffect(() => {
-  //   const getData = async () => {
-  //     for (const chanName in streams) {
-  //       const data = streams[chanName]
-  //       const firstLine = await getTemplateData(popupFirstLine, data)
-  //       let secondLine
-  //       if (checkboxTwoLines) {
-  //         secondLine = await getTemplateData(popupSecondLine, data)
-  //       }
-  //       updateData((prevState, props) => {
-  //         return { ...prevState, [data.name]: { firstLine, secondLine } }
-  //       })
-  //     }
-  //   }
-  //   console.time('getTemplateData')
-  //   getData()
-  //   console.timeEnd('getTemplateData')
-  // }, [])
-
   return (
     <>
       {searchBar !== '' &&
-        <div className={classes.search}>
-          <div className={classes.searchIcon}>
-            <SearchIcon />
-          </div>
-          <InputBase
-            placeholder='Search…'
-            value={pressed.join('')}
-            classes={{
-              root: classes.inputRoot,
-              input: classes.inputInput
-            }}
-            inputProps={{ 'aria-label': 'search' }}
-          />
-        </div>
+      <Paper component='form' className='makeStyles-searchRoot'>
+        <InputBase
+          className='makeStyles-input'
+          placeholder='Search...'
+          value={pressed.join('')}
+          inputProps={{ 'aria-label': 'search streamer/game' }}
+        />
+        <IconButton
+          type='submit'
+          className='.makeStyles-iconButton'
+          aria-label='search'
+        >
+          <SearchIcon />
+        </IconButton>
+      </Paper>
       }
       {viewData.length !== 0 &&
-      <List className={classes.root + ' ' + ((checkboxDarkMode || false) ? 'DarkMode' : 'BrightMode')} subheader={<li />} dense={checkboxDense || false} >
-        {viewData.sort((a, b) => a.game.localeCompare(b.game)).map((channelName, index) => (
-          <li key={`section-${index}`} className={classes.listSection}>
-            <ul className={classes.ul}>
-              <ListSubheader>{channelName.game}</ListSubheader>
-              {channelName.streamer.sort((a, b) => a.name.localeCompare(b.name)).map((channel, i) => (
-                <ListItem
-                  button
-                  key={`item-${index}-${channel.name}`}
-                  onMouseDown={() => { background.openStream(channel.name); window.close() }}
+      <Paper className='makeStyles-searchRoot'>
+        <List className={'makeStyles-root ' + ((checkboxDarkMode || false) ? 'DarkMode' : 'BrightMode')} subheader={<li />} dense={checkboxDense || false} >
+          {viewData.sort((a, b) => {
+            let i = 0
+            while (true) {
+              const aGameCharCodeAt = a.game.charCodeAt(i)
+              const bGameCharCodeAt = b.game.charCodeAt(i)
+              if (isNaN(aGameCharCodeAt) || isNaN(bGameCharCodeAt)) {
+                return false
+              }
+              if (aGameCharCodeAt !== bGameCharCodeAt) {
+                if (aGameCharCodeAt < bGameCharCodeAt) {
+                  return true
+                } else {
+                  return false
+                }
+              }
+              i += 1
+            }
+          }).map((channelName, index) => (
+            <li key={`section-${index}`} className='makeStyles-listSection'>
+              <ul className='makeStyles-ul'>
+                <ListSubheader
+                  style={{ cursor: 'pointer' }}
+                  onMouseDown={() => { background.openLink('https://www.twitch.tv/directory/game/' + encodeURI(channelName.game)); window.close() }}
                 >
-                  {checkboxThumbnail &&
+                  {channelName.game}
+                </ListSubheader>
+                {channelName.streamer.sort((a, b) => {
+                  let i = 0
+                  while (true) {
+                    const aNameCharCodeAt = a.name.charCodeAt(i)
+                    const bNameCharCodeAt = b.name.charCodeAt(i)
+                    if (isNaN(aNameCharCodeAt) || isNaN(bNameCharCodeAt)) {
+                      return false
+                    }
+                    if (aNameCharCodeAt !== bNameCharCodeAt) {
+                      if (aNameCharCodeAt < bNameCharCodeAt) {
+                        return true
+                      } else {
+                        return false
+                      }
+                    }
+                    i += 1
+                  }
+                }).map((channel, i) => (
+                  <ListItem
+                    button
+                    key={`item-${index}-${channel.name}`}
+                    onMouseDown={() => { background.openStream(channel.name); window.close() }}
+                    id={channel.name}
+                  >
+                    {checkboxThumbnail &&
                     <ListItemAvatar>
                       <Avatar
                         variant='rounded'
@@ -257,19 +231,20 @@ export default function Popup () {
                         src={channel.thumbnail_url}
                       />
                     </ListItemAvatar>
-                  }
-                  <ListItemText
-                    primary={getTemplateData(popupFirstLine, channel)}
-                    secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? getTemplateData(popupSecondLine, channel) : null}
-                  />
-                </ListItem>
-              ))}
-            </ul>
-          </li>
-        ))
-        }
-      </List>
+                    }
+                    <ListItemText
+                      primary={getTemplateData(popupFirstLine, channel)}
+                      secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? getTemplateData(popupSecondLine, channel) : null}
+                    />
+                  </ListItem>
+                ))}
+              </ul>
+            </li>
+          ))
+          }
+        </List>
+      </Paper>
       }
     </>
   )
-}
+})

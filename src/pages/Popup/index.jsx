@@ -19,11 +19,9 @@ const theme = createMuiTheme({
   }
 })
 
-const element = (
+render((
   <ThemeProvider theme={theme}>
     <CssBaseline />
     <Popup />
   </ThemeProvider>
-)
-
-render(element, document.getElementById('app-container'))
+), document.getElementById('app-container'))

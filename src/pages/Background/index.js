@@ -17,13 +17,20 @@ let allChannels = []
 let allChannelsId = []
 let windowSettings = {
   OAuth: '',
-  clientID: '',
+  clientID: 's8gs9idntg25gl66k3w73y7ck02a6r',
   PriorityChannels: [],
   changeTitleChannels: [],
   changeGameChannels: [],
   isOfflineChannels: [],
   popupFirstLine: '{channelName}',
   popupSecondLine: 'viewer: {viewerCount}, uptime: {timeAgo}'
+}
+
+const lastErrorFunc = () => {
+  if (chrome.runtime.lastError) {
+    console.trace()
+    console.warn(chrome.runtime.lastError.message)
+  }
 }
 
 const storageGet = (params = null) => {
@@ -74,8 +81,18 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
   }
 }
 
-window.createOAuthListener = () => {
+// window.createOAuthListener = () => {
+//   browserAPI.tabs.onUpdated.addListener(OAuthListener)
+// }
+
+window.createNewOAuth = () => {
   browserAPI.tabs.onUpdated.addListener(OAuthListener)
+  browserAPI.tabs.create({ url: `https://id.twitch.tv/oauth2/authorize?client_id=${windowSettings.clientID}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
+
+  // browserAPI.tabs.getCurrent(tab => {
+  //   console.log({ tab })
+  //   browserAPI.tabs.update(tab.id, { url: `https://id.twitch.tv/oauth2/authorize?client_id=${clientIDApp}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
+  // })
 }
 
 // Source: https://www.thepolyglotdeveloper.com/2015/03/create-a-random-nonce-string-using-javascript/
@@ -141,7 +158,6 @@ const connect = () => {
           if (msg.type === 'stream-up') {
             if (!LiveChannels[chanName]) {
               const found = allChannels.find(element => element.nametoLowerCase === chanName)
-
               // https://dev.twitch.tv/docs/v5/reference/channels#get-channel-by-id
               const chan = await request({ url: 'https://api.twitch.tv/kraken/channels/' + found.id, clientID: windowSettings.clientID, OAuth: 'Bearer ' + windowSettings.OAuth })
               LiveChannels[chanName] = {
@@ -214,50 +230,29 @@ window.getStreams = () => LiveChannels
 window.setPriorityChannelReducer = value => {
   windowSettings.PriorityChannels = value
 
-  browserAPI.storage.sync.set({ PriorityChannels: windowSettings.PriorityChannels }, () => {
-    // console.debug('setPriorityChannelReducer saved', { PriorityChannels: windowSettings.PriorityChannels })
-    if (chrome.runtime.lastError) {
-      console.warn(chrome.runtime.lastError.message)
-    }
-  })
+  browserAPI.storage.sync.set({ PriorityChannels: windowSettings.PriorityChannels }, lastErrorFunc)
 }
 
 window.setPropertyChannelReducer = (type, value) => {
   switch (type) {
     case 'isOnline':
       windowSettings.PriorityChannels = value
-      browserAPI.storage.sync.set({ PriorityChannels: value }, () => {
-        if (chrome.runtime.lastError) {
-          console.warn(chrome.runtime.lastError.message)
-        }
-      })
+      browserAPI.storage.sync.set({ PriorityChannels: value }, lastErrorFunc)
       break
 
     case 'changeTitle':
       windowSettings.changeTitleChannels = value
-      browserAPI.storage.sync.set({ changeTitleChannels: value }, () => {
-        if (chrome.runtime.lastError) {
-          console.warn(chrome.runtime.lastError.message)
-        }
-      })
+      browserAPI.storage.sync.set({ changeTitleChannels: value }, lastErrorFunc)
       break
 
     case 'changeGame':
       windowSettings.changeGameChannels = value
-      browserAPI.storage.sync.set({ changeGameChannels: value }, () => {
-        if (chrome.runtime.lastError) {
-          console.warn(chrome.runtime.lastError.message)
-        }
-      })
+      browserAPI.storage.sync.set({ changeGameChannels: value }, lastErrorFunc)
       break
 
     case 'isOffline':
       windowSettings.isOfflineChannels = value
-      browserAPI.storage.sync.set({ isOfflineChannels: value }, () => {
-        if (chrome.runtime.lastError) {
-          console.warn(chrome.runtime.lastError.message)
-        }
-      })
+      browserAPI.storage.sync.set({ isOfflineChannels: value }, lastErrorFunc)
       break
 
     default:
@@ -269,12 +264,7 @@ window.settingsReducer = ({ type, value }) => {
   switch (type) {
     case 'SET':
       windowSettings[value.name] = value.value
-      browserAPI.storage.sync.set({ [value.name]: value.value }, () => {
-        // console.debug('saved', { [value.name]: value.value })
-        if (chrome.runtime.lastError) {
-          console.warn(chrome.runtime.lastError.message)
-        }
-      })
+      browserAPI.storage.sync.set({ [value.name]: value.value }, lastErrorFunc)
       break
     case 'GET':
       return windowSettings[value.name]
@@ -297,9 +287,7 @@ window.settingsReducer = ({ type, value }) => {
 
       browserAPI.storage.sync.clear(() => {
         window.alert('Settings deleted')
-        if (chrome.runtime.lastError) {
-          console.warn(chrome.runtime.lastError.message)
-        }
+        lastErrorFunc()
       })
       return windowSettings
     default:
@@ -324,11 +312,7 @@ window.openStream = channelName => {
 }
 
 window.openLink = url => {
-  browserAPI.tabs.create({ url }, () => {
-    if (chrome.runtime.lastError) {
-      console.warn(chrome.runtime.lastError.message)
-    }
-  })
+  browserAPI.tabs.create({ url }, lastErrorFunc)
 }
 
 const request = ({ url, clientID, OAuth }) => {
@@ -343,6 +327,10 @@ const request = ({ url, clientID, OAuth }) => {
         resolve(JSON.parse(xhr.responseText))
       } else {
         console.warn(url, xhr.statusText, xhr.responseText, 'oAuth', OAuth)
+        if (JSON.parse(xhr.responseText).message === 'Invalid OAuth token') {
+          windowSettings.OAuth = '' // del oauth
+          window.createNewOAuth()
+        }
         // window.alert(url + " " + xhr.responseText)
         reject(xhr.statusText)
       }
@@ -501,7 +489,6 @@ const getGameIDList = (array = []) => {
         clientID: windowSettings.clientID,
         OAuth: 'Bearer ' + windowSettings.OAuth
       }).then(result => {
-        // console.log('getGameIDList', result)
         result.data.forEach(ele => {
           GameIDList[ele.id] = ele.name
         })
