@@ -153,98 +153,94 @@ export default React.memo(function Popup () {
   return (
     <>
       {searchBar !== '' &&
-      <Paper component='form' className='makeStyles-searchRoot'>
-        <InputBase
-          className='makeStyles-input'
-          placeholder='Search...'
-          value={pressed.join('')}
-          inputProps={{ 'aria-label': 'search streamer/game' }}
-        />
-        <IconButton
-          type='submit'
-          className='.makeStyles-iconButton'
-          aria-label='search'
-        >
-          <SearchIcon />
-        </IconButton>
-      </Paper>
-      }
+        <Paper component='form' className='makeStyles-searchRoot'>
+          <InputBase
+            className='makeStyles-input'
+            placeholder='Search...'
+            value={pressed.join('')}
+            inputProps={{ 'aria-label': 'search streamer/game' }}
+          />
+          <IconButton
+            type='submit'
+            className='.makeStyles-iconButton'
+            aria-label='search'
+          >
+            <SearchIcon />
+          </IconButton>
+        </Paper>}
       {viewData.length !== 0 &&
-      <Paper className='makeStyles-searchRoot'>
-        <List className={'makeStyles-root ' + ((checkboxDarkMode || false) ? 'DarkMode' : 'BrightMode')} subheader={<li />} dense={checkboxDense || false} >
-          {viewData.sort((a, b) => {
-            let i = 0
-            while (true) {
-              const aGameCharCodeAt = a.game.charCodeAt(i)
-              const bGameCharCodeAt = b.game.charCodeAt(i)
-              if (isNaN(aGameCharCodeAt) || isNaN(bGameCharCodeAt)) {
-                return false
-              }
-              if (aGameCharCodeAt !== bGameCharCodeAt) {
-                if (aGameCharCodeAt < bGameCharCodeAt) {
-                  return true
-                } else {
-                  return false
+        <Paper className='makeStyles-searchRoot'>
+          <List className={'makeStyles-root ' + ((checkboxDarkMode || false) ? 'DarkMode' : 'BrightMode')} subheader={<li />} dense={checkboxDense || false}>
+            {viewData.sort((a, b) => {
+              let i = 0
+              while (true) {
+                const aGameCharCodeAt = a.game.charCodeAt(i)
+                const bGameCharCodeAt = b.game.charCodeAt(i)
+                if (isNaN(aGameCharCodeAt) || isNaN(bGameCharCodeAt)) {
+                  return 0
                 }
-              }
-              i += 1
-            }
-          }).map((channelName, index) => (
-            <li key={`section-${index}`} className='makeStyles-listSection'>
-              <ul className='makeStyles-ul'>
-                <ListSubheader
-                  style={{ cursor: 'pointer' }}
-                  onMouseDown={() => { background.openLink('https://www.twitch.tv/directory/game/' + encodeURI(channelName.game)); window.close() }}
-                >
-                  {channelName.game}
-                </ListSubheader>
-                {channelName.streamer.sort((a, b) => {
-                  let i = 0
-                  while (true) {
-                    const aNameCharCodeAt = a.name.charCodeAt(i)
-                    const bNameCharCodeAt = b.name.charCodeAt(i)
-                    if (isNaN(aNameCharCodeAt) || isNaN(bNameCharCodeAt)) {
-                      return false
-                    }
-                    if (aNameCharCodeAt !== bNameCharCodeAt) {
-                      if (aNameCharCodeAt < bNameCharCodeAt) {
-                        return true
-                      } else {
-                        return false
-                      }
-                    }
-                    i += 1
+                if (aGameCharCodeAt !== bGameCharCodeAt) {
+                  if (aGameCharCodeAt < bGameCharCodeAt) {
+                    return -1
+                  } else {
+                    return 1
                   }
-                }).map((channel, i) => (
-                  <ListItem
-                    button
-                    key={`item-${index}-${channel.name}`}
-                    onMouseDown={() => { background.openStream(channel.name); window.close() }}
-                    id={channel.name}
+                }
+                i += 1
+              }
+            }).map((channelName, index) => (
+              <li key={`section-${index}`} className='makeStyles-listSection'>
+                <ul className='makeStyles-ul'>
+                  <ListSubheader
+                    style={{ cursor: 'pointer' }}
+                    onMouseDown={() => { background.openLink('https://www.twitch.tv/directory/game/' + encodeURI(channelName.game)); window.close() }}
                   >
-                    {checkboxThumbnail &&
-                    <ListItemAvatar>
-                      <Avatar
-                        variant='rounded'
-                        imgProps={{ async: 'on', loading: 'lazy' }}
-                        alt={channel.name}
-                        src={channel.thumbnail_url}
-                      />
-                    </ListItemAvatar>
+                    {channelName.game}
+                  </ListSubheader>
+                  {channelName.streamer.sort((a, b) => {
+                    let i = 0
+                    while (true) {
+                      const aNameCharCodeAt = a.name.charCodeAt(i)
+                      const bNameCharCodeAt = b.name.charCodeAt(i)
+                      if (isNaN(aNameCharCodeAt) || isNaN(bNameCharCodeAt)) {
+                        return 0
+                      }
+                      if (aNameCharCodeAt !== bNameCharCodeAt) {
+                        if (aNameCharCodeAt < bNameCharCodeAt) {
+                          return -1
+                        } else {
+                          return 1
+                        }
+                      }
+                      i += 1
                     }
-                    <ListItemText
-                      primary={getTemplateData(popupFirstLine, channel)}
-                      secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? getTemplateData(popupSecondLine, channel) : null}
-                    />
-                  </ListItem>
-                ))}
-              </ul>
-            </li>
-          ))
-          }
-        </List>
-      </Paper>
-      }
+                  }).map((channel, i) => (
+                    <ListItem
+                      button
+                      key={`item-${index}-${channel.name}`}
+                      onMouseDown={() => { background.openStream(channel.name); window.close() }}
+                      id={channel.name}
+                    >
+                      {checkboxThumbnail &&
+                        <ListItemAvatar>
+                          <Avatar
+                            variant='rounded'
+                            imgProps={{ async: 'on', loading: 'lazy' }}
+                            alt={channel.name}
+                            src={channel.thumbnail_url}
+                          />
+                        </ListItemAvatar>}
+                      <ListItemText
+                        primary={getTemplateData(popupFirstLine, channel)}
+                        secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? getTemplateData(popupSecondLine, channel) : null}
+                      />
+                    </ListItem>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </List>
+        </Paper>}
     </>
   )
 })
