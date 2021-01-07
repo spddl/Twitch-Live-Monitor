@@ -88,11 +88,6 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
 window.createNewOAuth = () => {
   browserAPI.tabs.onUpdated.addListener(OAuthListener)
   browserAPI.tabs.create({ url: `https://id.twitch.tv/oauth2/authorize?client_id=${windowSettings.clientID}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
-
-  // browserAPI.tabs.getCurrent(tab => {
-  //   console.log({ tab })
-  //   browserAPI.tabs.update(tab.id, { url: `https://id.twitch.tv/oauth2/authorize?client_id=${clientIDApp}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
-  // })
 }
 
 // Source: https://www.thepolyglotdeveloper.com/2015/03/create-a-random-nonce-string-using-javascript/
@@ -151,7 +146,7 @@ const connect = () => {
       const eventData = JSON.parse(event.data)
 
       switch (eventData.type) {
-        case 'MESSAGE':
+        case 'MESSAGE': {
           const chanName = eventData.data.topic.substr(15)
           const msg = JSON.parse(eventData.data.message)
 
@@ -186,7 +181,7 @@ const connect = () => {
             console.warn('WS default:', chanName, msg) // {type: "commercial", server_time: 1600273745.207176, length: 60}
           }
           break
-
+        }
         case 'RECONNECT':
           console.debug('WS: Reconnecting...')
           setTimeout(connect, reconnectInterval)
@@ -358,10 +353,9 @@ const toDataURL = url => {
     }
   })
 }
-
 let tempGameIDList = []
 const checkStatus = (init = false) => {
-  return new Promise(async resolve => {
+  return new Promise(async resolve => { // eslint-disable-line no-async-promise-executor
     if (allChannelsId.length === 0) {
       return
     }
@@ -468,7 +462,7 @@ const checkStatus = (init = false) => {
       }
     }
 
-    for (let gameId in GameIDListCopy) {
+    for (const gameId in GameIDListCopy) {
       delete GameIDList[gameId]
     }
     resolve(LiveChannels)
@@ -476,7 +470,7 @@ const checkStatus = (init = false) => {
 }
 
 const getGameIDList = (array = []) => {
-  return new Promise(async resolve => {
+  return new Promise(async resolve => { // eslint-disable-line no-async-promise-executor
     if (array.length) {
       tempGameIDList = tempGameIDList.concat(array)
     }
@@ -504,7 +498,7 @@ const getGameIDList = (array = []) => {
 
 // getChannels gibt alle gefolgten Channels zurück
 const getChannels = () => {
-  return new Promise(async (resolve, reject) => {
+  return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
     let { clientID, OAuth, userID } = windowSettings || {}
     if (clientID === '' || !OAuth || OAuth === '' || !userID || userID === '') {
       console.debug("(window.settingsReducer) clientID === '' || OAuth === '' || userID === ''")

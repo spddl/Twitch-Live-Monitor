@@ -7,7 +7,8 @@ import CssBaseline from '@material-ui/core/CssBaseline'
 import Container from '@material-ui/core/Container'
 import Grid from '@material-ui/core/Grid'
 import TextField from '@material-ui/core/TextField'
-import { Button } from '@material-ui/core'
+import Button from '@material-ui/core/Button'
+import ButtonGroup from '@material-ui/core/ButtonGroup'
 import Checkbox from '@material-ui/core/Checkbox'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
 import FormControl from '@material-ui/core/FormControl'
@@ -68,13 +69,13 @@ const useToolbarStyles = makeStyles(theme => ({
   highlight:
     theme.palette.type === 'light'
       ? {
-        color: theme.palette.secondary.main,
-        backgroundColor: lighten(theme.palette.secondary.light, 0.85)
-      }
+          color: theme.palette.secondary.main,
+          backgroundColor: lighten(theme.palette.secondary.light, 0.85)
+        }
       : {
-        color: theme.palette.text.primary,
-        backgroundColor: theme.palette.secondary.dark
-      },
+          color: theme.palette.text.primary,
+          backgroundColor: theme.palette.secondary.dark
+        },
   title: {
     flex: '1 1 100%'
   }
@@ -207,11 +208,10 @@ function EnhancedTableHead (props) {
               onClick={createSortHandler(headCell.id)}
             >
               {headCell.label}
-              {orderBy === headCell.id ? (
+              {orderBy === headCell.id &&
                 <span className={classes.visuallyHidden}>
                   {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
-                </span>
-              ) : null}
+                </span>}
             </TableSortLabel>
           </TableCell>
         ))}
@@ -223,36 +223,40 @@ function EnhancedTableHead (props) {
 const EnhancedTableToolbar = props => {
   const classes = useToolbarStyles()
   const { numSelected } = props
-
+  let title
+  if (numSelected > 0) {
+    title = (
+      <Typography
+        className={classes.title}
+        color='inherit'
+        variant='subtitle1'
+        component='div'
+      >
+        {numSelected}/50 selected,
+        {numSelected < 51
+          ? ' Realtime Online Notification activated'
+          : ' Realtime Online Notification deactivated'}
+      </Typography>
+    )
+  } else {
+    title = (
+      <Typography
+        className={classes.title}
+        variant='h6'
+        id='tableTitle'
+        component='div'
+      >
+        Notification when these channels go live:
+      </Typography>
+    )
+  }
   return (
     <Toolbar
       className={clsx(classes.root, {
         [classes.highlight]: numSelected > 0
       })}
     >
-      {numSelected > 0 ? (
-        <Typography
-          className={classes.title}
-          color='inherit'
-          variant='subtitle1'
-          component='div'
-        >
-          {numSelected}/50 selected,
-          {numSelected < 51
-            ? ' Realtime Online Notification activated'
-            : ' Realtime Online Notification deactivated'
-          }
-        </Typography>
-      ) : (
-        <Typography
-          className={classes.title}
-          variant='h6'
-          id='tableTitle'
-          component='div'
-        >
-          Notification when these channels go live:
-        </Typography>
-      )}
+      {title}
     </Toolbar>
   )
 }
@@ -285,9 +289,11 @@ export default function Options () { // https://material-ui.com/components/table
     checkboxTwoLines: background.settingsReducer({ type: 'GET', value: { name: 'checkboxTwoLines' } }) || false,
     checkboxDarkMode: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDarkMode' } }) || false,
     checkboxThumbnail: background.settingsReducer({ type: 'GET', value: { name: 'checkboxThumbnail' } }) || false,
+    checkboxSortByViewers: background.settingsReducer({ type: 'GET', value: { name: 'checkboxSortByViewers' } }) || false,
     popupFirstLine: background.settingsReducer({ type: 'GET', value: { name: 'popupFirstLine' } }) || '',
     popupSecondLine: background.settingsReducer({ type: 'GET', value: { name: 'popupSecondLine' } }) || ''
   })
+
   const [openSnackbar, setOpenSnackbar] = React.useState(false)
   const handleSnackbarClose = (event, reason) => {
     if (reason === 'clickaway') {
@@ -305,7 +311,7 @@ export default function Options () { // https://material-ui.com/components/table
     })
   }
 
-  let rowsPerPageOptions = [25, 50, 100, 200]
+  const rowsPerPageOptions = [25, 50, 100, 200]
   if (allRows.length > 200) {
     rowsPerPageOptions.push(allRows.length)
   }
@@ -394,7 +400,18 @@ export default function Options () { // https://material-ui.com/components/table
     setPage(0)
   }
 
-  const handleChange = async event => {
+  const handleButtonChange = event => {
+    if (event.persist) {
+      event.persist()
+    }
+    const name = event.target.id || event.target.parentNode.id || event.target.parentNode.parentNode.id
+    setState((prevState, props) => {
+      background.settingsReducer({ type: 'SET', value: { name, value: !prevState[name] } })
+      return { ...prevState, [name]: !prevState[name] }
+    })
+  }
+
+  const handleChange = event => {
     if (event.persist) {
       event.persist()
     }
@@ -408,22 +425,23 @@ export default function Options () { // https://material-ui.com/components/table
       value = event.target.checked
     }
     setState((prevState, props) => {
+      background.settingsReducer({ type: 'SET', value: { name, value } })
       return { ...prevState, [name]: value }
     })
-    background.settingsReducer({ type: 'SET', value: { name, value } })
   }
 
   let NotificationTable
   if (userID !== '' && OAuth !== '' && state.accountname !== '' && rows.length === 0 && filter === '') {
     console.debug({ userID, OAuth, stateAccountName: state.accountname, rowsLength: rows.length, filter, state })
-    NotificationTable =
+    NotificationTable = (
       <Grid item xs={12}>
         <Typography variant='h4' component='h2' onClick={() => window.location.reload(false)}>
           Try to Reload
         </Typography>
-      </Grid >
+      </Grid>
+    )
   } else if (rows.length > 0 || filter !== '') {
-    NotificationTable =
+    NotificationTable = (
       <Grid item xs={12}>
         <div className={classes.root}>
           <Paper className={classes.paper}>
@@ -523,11 +541,12 @@ export default function Options () { // https://material-ui.com/components/table
             />
           </Paper>
         </div>
-      </Grid >
+      </Grid>
+    )
   }
 
   return (
-    <React.Fragment>
+    <>
       <CssBaseline />
       <Container fixed>
         <Grid container spacing={3}>
@@ -578,16 +597,22 @@ export default function Options () { // https://material-ui.com/components/table
             />
           </Grid>
 
-          <Grid container item>
+          <Grid item xs={12} lg={6}>
+            <ButtonGroup disableElevation variant='contained' color='primary' onClick={handleButtonChange} id='checkboxSortByViewers'>
+              <Button disabled={state.checkboxSortByViewers}>Group by Games</Button>
+              <Button disabled={!state.checkboxSortByViewers}>Sort by Viewers</Button>
+            </ButtonGroup>
+          </Grid>
 
+          <Grid container item>
             <Button variant='outlined' color='secondary' onClick={handleClickOpenDialogPopup}>
-                Edit Popup Template
+              Edit Popup Template
             </Button>
             <Dialog open={openDialogPopup} onClose={handleCloseDialogPopup} aria-labelledby='form-dialog-title'>
               <DialogTitle id='form-dialog-title'>Popup Template</DialogTitle>
               <DialogContent>
                 <DialogContentText>
-                It is possible to change the content of the line, in addition we use variables which are later replaced by the correct value.
+                  It is possible to change the content of the line, in addition we use variables which are later replaced by the correct value.
                 </DialogContentText>
 
                 Copy some Var's
@@ -597,6 +622,7 @@ export default function Options () { // https://material-ui.com/components/table
                   <Chip label='{viewerCount}' variant='outlined' color='primary' onClick={() => copyClick('{viewerCount}')} />
                   <Chip label='{startedAt}' variant='outlined' color='primary' onClick={() => copyClick('{startedAt}')} />
                   <Chip label='{title}' variant='outlined' color='primary' onClick={() => copyClick('{title}')} />
+                  <Chip label='{game}' variant='outlined' color='primary' onClick={() => copyClick('{game}')} />
                 </div>
 
                 <TextField
@@ -623,11 +649,13 @@ export default function Options () { // https://material-ui.com/components/table
                 />
               </DialogContent>
               <DialogActions>
-                <Button color='primary' onClick={() => {
-                  handleCloseDialogPopup()
-                  handleChange({ target: { name: 'popupFirstLine', value: '{channelName}' } })
-                  handleChange({ target: { name: 'popupSecondLine', value: 'viewer: {viewerCount}, uptime: {timeAgo}' } })
-                }}>
+                <Button
+                  color='primary' onClick={() => {
+                    handleCloseDialogPopup()
+                    handleChange({ target: { name: 'popupFirstLine', value: '{channelName}' } })
+                    handleChange({ target: { name: 'popupSecondLine', value: 'viewer: {viewerCount}, uptime: {timeAgo}' } })
+                  }}
+                >
                   Reset to default
                 </Button>
                 <Button onClick={handleCloseDialogPopup} color='primary'>
@@ -648,7 +676,7 @@ export default function Options () { // https://material-ui.com/components/table
             </Button>
           </Grid>
           {NotificationTable}
-        </Grid >
+        </Grid>
 
         <Snackbar
           anchorOrigin={{
@@ -660,15 +688,15 @@ export default function Options () { // https://material-ui.com/components/table
           onClose={handleSnackbarClose}
           message='Copy'
           action={
-            <React.Fragment>
+            <>
               <IconButton size='small' aria-label='close' color='inherit' onClick={handleSnackbarClose}>
                 <CloseIcon fontSize='small' />
               </IconButton>
-            </React.Fragment>
+            </>
           }
         />
 
-      </Container >
-    </React.Fragment >
+      </Container>
+    </>
   )
 }
