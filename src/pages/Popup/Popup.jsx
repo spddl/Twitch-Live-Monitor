@@ -11,12 +11,20 @@ import Avatar from '@material-ui/core/Avatar'
 import Paper from '@material-ui/core/Paper'
 import IconButton from '@material-ui/core/IconButton'
 import SearchIcon from '@material-ui/icons/Search'
+import Typography from '@material-ui/core/Typography'
 import './Popup.css'
 
 const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
 
 const background = browserAPI.extension.getBackgroundPage()
+
+const cssEllipsis = {
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  display: 'block'
+}
 
 const zeroPad2 = num => num < 10 ? '0' + num : num
 function timeAgo (timeStamp, now) {
@@ -49,7 +57,7 @@ const AwaitFunctionsSync = function ({ name, channel }) {
     case '{startedAt}': return channel.started_at
     case '{title}': return channel.title
     case '{type}': return channel.type
-    case '{game}': return background.getGameIDList()[channel.game_id]
+    case '{game}': return background.getGameIDList()[channel.game_id] // performance issue?
     case '{gameID}': return channel.game_id
     default:
       return 'unknown'
@@ -79,12 +87,12 @@ export default React.memo(function Popup () {
   const [pressed, setPressed] = React.useState([])
   const {
     checkboxDense,
-    checkboxTwoLines,
     checkboxDarkMode,
     checkboxThumbnail,
     checkboxSortByViewers,
     popupFirstLine,
-    popupSecondLine
+    popupSecondLine,
+    popupThirdLine
   } = background.settingsReducer({ type: 'GETALL' }) || {}
 
   const streams = background.getStreams()
@@ -128,7 +136,7 @@ export default React.memo(function Popup () {
         checkboxThumbnail={checkboxThumbnail}
         popupFirstLine={popupFirstLine}
         popupSecondLine={popupSecondLine}
-        checkboxTwoLines={checkboxTwoLines}
+        popupThirdLine={popupThirdLine}
       />
     )
   } else {
@@ -142,7 +150,7 @@ export default React.memo(function Popup () {
         checkboxThumbnail={checkboxThumbnail}
         popupFirstLine={popupFirstLine}
         popupSecondLine={popupSecondLine}
-        checkboxTwoLines={checkboxTwoLines}
+        popupThirdLine={popupThirdLine}
       />
     )
   }
@@ -170,7 +178,7 @@ export default React.memo(function Popup () {
   )
 })
 
-function GroupByGames ({ streams, GameIDList, searchBar, checkboxDarkMode, checkboxDense, checkboxThumbnail, popupFirstLine, popupSecondLine, checkboxTwoLines }) {
+function GroupByGames ({ streams, GameIDList, searchBar, checkboxDarkMode, checkboxDense, checkboxThumbnail, popupFirstLine, popupSecondLine, popupThirdLine }) {
   const viewData = []
   for (const chanName in streams) {
     const data = streams[chanName]
@@ -212,22 +220,8 @@ function GroupByGames ({ streams, GameIDList, searchBar, checkboxDarkMode, check
     <Paper className='makeStyles-searchRoot'>
       <List className={'makeStyles-root ' + ((checkboxDarkMode || false) ? 'DarkMode' : 'BrightMode')} subheader={<li />} dense={checkboxDense || false}>
         {viewData.sort((a, b) => {
-          let i = 0
-          while (true) {
-            const aGameCharCodeAt = a.game.charCodeAt(i)
-            const bGameCharCodeAt = b.game.charCodeAt(i)
-            if (isNaN(aGameCharCodeAt) || isNaN(bGameCharCodeAt)) {
-              return 0
-            }
-            if (aGameCharCodeAt !== bGameCharCodeAt) {
-              if (aGameCharCodeAt < bGameCharCodeAt) {
-                return -1
-              } else {
-                return 1
-              }
-            }
-            i += 1
-          }
+          if (a.game < b.game) return -1
+          return a.game > b.game ? 1 : 0
         }).map((channelName, index) => (
           <li key={`section-${index}`} className='makeStyles-listSection'>
             <ul className='makeStyles-ul'>
@@ -238,22 +232,8 @@ function GroupByGames ({ streams, GameIDList, searchBar, checkboxDarkMode, check
                 {channelName.game}
               </ListSubheader>
               {channelName.streamer.sort((a, b) => {
-                let i = 0
-                while (true) {
-                  const aNameCharCodeAt = a.name.charCodeAt(i)
-                  const bNameCharCodeAt = b.name.charCodeAt(i)
-                  if (isNaN(aNameCharCodeAt) || isNaN(bNameCharCodeAt)) {
-                    return 0
-                  }
-                  if (aNameCharCodeAt !== bNameCharCodeAt) {
-                    if (aNameCharCodeAt < bNameCharCodeAt) {
-                      return -1
-                    } else {
-                      return 1
-                    }
-                  }
-                  i += 1
-                }
+                if (a.name < b.name) return -1
+                return a.name > b.name ? 1 : 0
               }).map((channel, i) => (
                 <ListItem
                   button
@@ -271,8 +251,65 @@ function GroupByGames ({ streams, GameIDList, searchBar, checkboxDarkMode, check
                       />
                     </ListItemAvatar>}
                   <ListItemText
-                    primary={getTemplateData(popupFirstLine, channel)}
-                    secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? getTemplateData(popupSecondLine, channel) : null}
+                    // primary={getTemplateData(popupFirstLine, channel)}
+                    primary={
+                      <Typography
+                        component='span' // TODO div und p geht nicht
+                        variant='body2'
+                        color='textPrimary'
+                        style={cssEllipsis}
+                      >
+                        {getTemplateData(popupFirstLine, channel)}
+                      </Typography>
+                    }
+                    secondary={
+                      (() => {
+                        if (popupSecondLine !== '' && popupThirdLine !== '') {
+                          return (
+                            <>
+                              <Typography
+                                component='span'
+                                variant='body2'
+                                color='textPrimary'
+                                style={cssEllipsis}
+                              >
+                                {getTemplateData(popupSecondLine, channel)}
+                              </Typography>
+                              <Typography
+                                component='span'
+                                variant='body2'
+                                color='textSecondary'
+                                style={cssEllipsis}
+                              >
+                                {getTemplateData(popupThirdLine, channel)}
+                              </Typography>
+                            </>
+                          )
+                        } else if (popupSecondLine !== '') {
+                          return (
+                            <Typography
+                              component='span'
+                              variant='body2'
+                              color='textSecondary'
+                              style={cssEllipsis}
+                            >
+                              {getTemplateData(popupSecondLine, channel)}
+                            </Typography>
+                          )
+                        } else if (popupThirdLine !== '') {
+                          return (
+                            <Typography
+                              component='span'
+                              variant='body2'
+                              color='textSecondary'
+                              style={cssEllipsis}
+                            >
+                              {getTemplateData(popupThirdLine, channel)}
+                            </Typography>
+                          )
+                        }
+                      })()
+                    }
                   />
                 </ListItem>
               ))}
@@ -284,7 +321,7 @@ function GroupByGames ({ streams, GameIDList, searchBar, checkboxDarkMode, check
   )
 }
 
-function GroupByViewers ({ streams, GameIDList, searchBar, checkboxDarkMode, checkboxDense, checkboxThumbnail, popupFirstLine, popupSecondLine, checkboxTwoLines }) {
+function GroupByViewers ({ streams, GameIDList, searchBar, checkboxDarkMode, checkboxDense, checkboxThumbnail, popupFirstLine, popupSecondLine, popupThirdLine }) {
   const viewData = []
 
   if (Object.keys(streams).length === 0 && searchBar === '') {
@@ -334,7 +371,54 @@ function GroupByViewers ({ streams, GameIDList, searchBar, checkboxDarkMode, che
                   </ListItemAvatar>}
                 <ListItemText
                   primary={getTemplateData(popupFirstLine, channel)}
-                  secondary={(checkboxTwoLines || false) && channel.name !== 'Options' ? getTemplateData(popupSecondLine, channel) : null}
+                  secondary={
+                    (() => {
+                      if (popupSecondLine !== '' && popupThirdLine !== '') {
+                        return (
+                          <>
+                            <Typography
+                              component='span'
+                              variant='body2'
+                              color='textPrimary'
+                              style={cssEllipsis}
+                            >
+                              {getTemplateData(popupSecondLine, channel)}
+                            </Typography>
+                            <Typography
+                              component='span'
+                              variant='body2'
+                              color='textSecondary'
+                              style={cssEllipsis}
+                            >
+                              {getTemplateData(popupThirdLine, channel)}
+                            </Typography>
+                          </>
+                        )
+                      } else if (popupSecondLine !== '') {
+                        return (
+                          <Typography
+                            component='span'
+                            variant='body2'
+                            color='textSecondary'
+                            style={cssEllipsis}
+                          >
+                            {getTemplateData(popupSecondLine, channel)}
+                          </Typography>
+                        )
+                      } else if (popupThirdLine !== '') {
+                        return (
+                          <Typography
+                            component='span'
+                            variant='body2'
+                            color='textSecondary'
+                            style={cssEllipsis}
+                          >
+                            {getTemplateData(popupThirdLine, channel)}
+                          </Typography>
+                        )
+                      }
+                    })()
+                  }
                 />
               </ListItem>
             </ul>

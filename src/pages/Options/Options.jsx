@@ -286,12 +286,12 @@ export default function Options () { // https://material-ui.com/components/table
     accountname: background.settingsReducer({ type: 'GET', value: { name: 'accountname' } }) || '',
     accountnameInput: background.settingsReducer({ type: 'GET', value: { name: 'accountnameInput' } }) || '',
     checkboxDense: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDense' } }) || false,
-    checkboxTwoLines: background.settingsReducer({ type: 'GET', value: { name: 'checkboxTwoLines' } }) || false,
     checkboxDarkMode: background.settingsReducer({ type: 'GET', value: { name: 'checkboxDarkMode' } }) || false,
     checkboxThumbnail: background.settingsReducer({ type: 'GET', value: { name: 'checkboxThumbnail' } }) || false,
     checkboxSortByViewers: background.settingsReducer({ type: 'GET', value: { name: 'checkboxSortByViewers' } }) || false,
     popupFirstLine: background.settingsReducer({ type: 'GET', value: { name: 'popupFirstLine' } }) || '',
-    popupSecondLine: background.settingsReducer({ type: 'GET', value: { name: 'popupSecondLine' } }) || ''
+    popupSecondLine: background.settingsReducer({ type: 'GET', value: { name: 'popupSecondLine' } }) || '',
+    popupThirdLine: background.settingsReducer({ type: 'GET', value: { name: 'popupThirdLine' } }) || ''
   })
 
   const [openSnackbar, setOpenSnackbar] = React.useState(false)
@@ -419,7 +419,8 @@ export default function Options () { // https://material-ui.com/components/table
     let value
     if (name === 'accountnameInput' ||
         name === 'popupFirstLine' ||
-        name === 'popupSecondLine') {
+        name === 'popupSecondLine' ||
+        name === 'popupThirdLine') {
       value = event.target.value
     } else {
       value = event.target.checked
@@ -578,13 +579,6 @@ export default function Options () { // https://material-ui.com/components/table
 
           <Grid item xs={12} lg={6}>
             <FormControlLabel
-              control={<Checkbox checked={state.checkboxTwoLines} onChange={handleChange} name='checkboxTwoLines' />}
-              label='Two Lines in popup List, viewers and uptime in the second line'
-            />
-          </Grid>
-
-          <Grid item xs={12} lg={6}>
-            <FormControlLabel
               control={<Checkbox checked={state.checkboxDarkMode} onChange={handleChange} name='checkboxDarkMode' />}
               label='Popup List on Darkmode'
             />
@@ -645,7 +639,17 @@ export default function Options () { // https://material-ui.com/components/table
                   fullWidth
                   value={state.popupSecondLine}
                   onChange={handleChange}
-                  disabled={!state.checkboxTwoLines}
+                />
+
+                <TextField
+                  autoFocus
+                  margin='dense'
+                  name='popupThirdLine'
+                  label='Third Line'
+                  type='text'
+                  fullWidth
+                  value={state.popupThirdLine}
+                  onChange={handleChange}
                 />
               </DialogContent>
               <DialogActions>
@@ -654,6 +658,7 @@ export default function Options () { // https://material-ui.com/components/table
                     handleCloseDialogPopup()
                     handleChange({ target: { name: 'popupFirstLine', value: '{channelName}' } })
                     handleChange({ target: { name: 'popupSecondLine', value: 'viewer: {viewerCount}, uptime: {timeAgo}' } })
+                    handleChange({ target: { name: 'popupThirdLine', value: '' } })
                   }}
                 >
                   Reset to default

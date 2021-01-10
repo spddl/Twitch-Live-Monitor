@@ -8,6 +8,7 @@ const re = /^https:\/\/github.com\/spddl\/Twitch-Live-Monitor#access_token=(.*?)
 const isFirefox = typeof browser !== 'undefined'
 const browserAPI = isFirefox ? browser : chrome
 
+// clientID: s8gs9idntg25gl66k3w73y7ck02a6r
 let ws
 const UPDATE_INTERVAL = 60 * 1000 * 2 // 2 minutes
 // const UPDATE_INTERVAL = 25 * 1000 // debug
@@ -17,7 +18,6 @@ let allChannels = []
 let allChannelsId = []
 let windowSettings = {
   OAuth: '',
-  clientID: 's8gs9idntg25gl66k3w73y7ck02a6r',
   PriorityChannels: [],
   changeTitleChannels: [],
   changeGameChannels: [],
@@ -49,12 +49,12 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
     const urlRegex = changeInfo.url.match(re)
     if (urlRegex !== null) {
       window.settingsReducer({ type: 'SET', value: { name: 'OAuth', value: urlRegex[1] } })
-      const { OAuth, clientID, userID, accountnameInput } = window.settingsReducer({ type: 'GETALL' }) || {}
+      const { OAuth, userID, accountnameInput } = window.settingsReducer({ type: 'GETALL' }) || {}
       browserAPI.tabs.onCreated.removeListener(OAuthListener)
-      console.debug({ OAuth, clientID, userID, accountnameInput })
+      console.debug({ OAuth, userID, accountnameInput })
       if (!userID) {
         const url = 'https://api.twitch.tv/kraken/users?login=' + accountnameInput
-        request({ url, clientID, OAuth }).then(data => {
+        request({ url, OAuth }).then(data => {
           if (data._total === 1) {
             window.settingsReducer({ type: 'SET', value: { name: 'userID', value: data.users[0]._id } })
             window.settingsReducer({ type: 'SET', value: { name: 'accountname', value: accountnameInput } })
@@ -87,7 +87,7 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
 
 window.createNewOAuth = () => {
   browserAPI.tabs.onUpdated.addListener(OAuthListener)
-  browserAPI.tabs.create({ url: `https://id.twitch.tv/oauth2/authorize?client_id=${windowSettings.clientID}&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read` })
+  browserAPI.tabs.create({ url: 'https://id.twitch.tv/oauth2/authorize?client_id=s8gs9idntg25gl66k3w73y7ck02a6r&redirect_uri=https://github.com/spddl/Twitch-Live-Monitor&response_type=token&scope=user_read' })
 }
 
 // Source: https://www.thepolyglotdeveloper.com/2015/03/create-a-random-nonce-string-using-javascript/
@@ -154,7 +154,7 @@ const connect = () => {
             if (!LiveChannels[chanName]) {
               const found = allChannels.find(element => element.nametoLowerCase === chanName)
               // https://dev.twitch.tv/docs/v5/reference/channels#get-channel-by-id
-              const chan = await request({ url: 'https://api.twitch.tv/kraken/channels/' + found.id, clientID: windowSettings.clientID, OAuth: 'Bearer ' + windowSettings.OAuth })
+              const chan = await request({ url: 'https://api.twitch.tv/kraken/channels/' + found.id, OAuth: 'Bearer ' + windowSettings.OAuth })
               LiveChannels[chanName] = {
                 source: 'ws',
                 name: chan.display_name || chan.name,
@@ -269,7 +269,6 @@ window.settingsReducer = ({ type, value }) => {
       browserAPI.browserAction.setBadgeText({ text: '0' })
       windowSettings = {
         OAuth: '',
-        clientID: '',
         PriorityChannels: [],
         changeTitleChannels: [],
         changeGameChannels: [],
@@ -310,13 +309,13 @@ window.openLink = url => {
   browserAPI.tabs.create({ url }, lastErrorFunc)
 }
 
-const request = ({ url, clientID, OAuth }) => {
+const request = ({ url, OAuth }) => {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('GET', url + ((/\?/).test(url) ? '&' : '?') + new Date().getTime()) // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest#Bypassing_the_cache
     xhr.setRequestHeader('Accept', 'application/vnd.twitchtv.v5+json')
     if (OAuth) xhr.setRequestHeader('Authorization', OAuth)
-    xhr.setRequestHeader('Client-ID', clientID)
+    xhr.setRequestHeader('Client-ID', 's8gs9idntg25gl66k3w73y7ck02a6r')
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText))
@@ -368,7 +367,7 @@ const checkStatus = (init = false) => {
 
     let tempLiveChannels = []
     // https://dev.twitch.tv/docs/api/reference#get-streams
-    const values = await Promise.all(results.map(result => request({ url: 'https://api.twitch.tv/helix/streams?user_id=' + result.join('&user_id='), clientID: windowSettings.clientID, OAuth: 'Bearer ' + windowSettings.OAuth })))
+    const values = await Promise.all(results.map(result => request({ url: 'https://api.twitch.tv/helix/streams?user_id=' + result.join('&user_id='), OAuth: 'Bearer ' + windowSettings.OAuth })))
     for (let i = 0; i < values.length; i++) {
       if (values[i] && values[i].data && values[i].data.length) {
         tempLiveChannels = tempLiveChannels.concat(values[i].data)
@@ -454,7 +453,7 @@ const checkStatus = (init = false) => {
         if (LiveChannels[oldLiveChannels[i]].source === 'ws') { continue } // wird übersprungen, vermutlich ist der Channel im nächsten Durchlauf "live"
         if (!init && windowSettings && windowSettings.isOfflineChannels && windowSettings.isOfflineChannels.indexOf(channel) !== -1) {
           // https://dev.twitch.tv/docs/v5/reference/users#get-user-by-id
-          const targetChannel = await request({ url: 'https://api.twitch.tv/kraken/users/' + LiveChannels[oldLiveChannels[i]].user_id, clientID: windowSettings.clientID })
+          const targetChannel = await request({ url: 'https://api.twitch.tv/kraken/users/' + LiveChannels[oldLiveChannels[i]].user_id })
           const iconUrl = await toDataURL(targetChannel.logo)
           pushNotification({ channel: targetChannel.display_name, title: `${targetChannel.display_name} is Offline`, iconUrl })
         }
@@ -480,7 +479,6 @@ const getGameIDList = (array = []) => {
       const url = 'https://api.twitch.tv/helix/games?id=' + tempGameIDList.join('&id=')
       await request({
         url,
-        clientID: windowSettings.clientID,
         OAuth: 'Bearer ' + windowSettings.OAuth
       }).then(result => {
         result.data.forEach(ele => {
@@ -499,18 +497,17 @@ const getGameIDList = (array = []) => {
 // getChannels gibt alle gefolgten Channels zurück
 const getChannels = () => {
   return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
-    let { clientID, OAuth, userID } = windowSettings || {}
-    if (clientID === '' || !OAuth || OAuth === '' || !userID || userID === '') {
-      console.debug("(window.settingsReducer) clientID === '' || OAuth === '' || userID === ''")
-      const result = await storageGet(['clientID', 'OAuth', 'userID'])
-      // { clientID, OAuth, userID } = result
-      clientID = result.clientID
+    let { OAuth, userID } = windowSettings || {}
+    if (!OAuth || OAuth === '' || !userID || userID === '') {
+      console.debug("(window.settingsReducer) OAuth === '' || userID === ''")
+      const result = await storageGet(['OAuth', 'userID'])
+      // { OAuth, userID } = result
       OAuth = result.OAuth
       userID = result.userID
     }
 
-    if (clientID === '' || !OAuth || OAuth === '' || !userID || userID === '') {
-      console.debug("result.clientID === '' || result.OAuth === '' || result.userID === ''")
+    if (!OAuth || OAuth === '' || !userID || userID === '') {
+      console.debug("result.OAuth === '' || result.userID === ''")
       return
     }
 
@@ -528,7 +525,7 @@ const getChannels = () => {
       }
 
       try {
-        const twitchResult = await request({ url, clientID: clientID, OAuth: 'Bearer ' + OAuth })
+        const twitchResult = await request({ url, OAuth: 'Bearer ' + OAuth })
         total = twitchResult.total
         pagination = twitchResult.pagination.cursor
 
