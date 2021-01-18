@@ -291,7 +291,12 @@ window.settingsReducer = ({ type, value }) => {
 }
 
 window.getAllChannels = () => allChannels
-window.getGameIDList = () => GameIDList
+window.getGameIDList = id => {
+  if (id !== undefined) {
+    return GameIDList[id]
+  }
+  return GameIDList
+}
 
 window.openStream = channelName => {
   if (channelName === 'Options') {
@@ -369,7 +374,7 @@ const checkStatus = (init = false) => {
     // https://dev.twitch.tv/docs/api/reference#get-streams
     const values = await Promise.all(results.map(result => request({ url: 'https://api.twitch.tv/helix/streams?user_id=' + result.join('&user_id='), OAuth: 'Bearer ' + windowSettings.OAuth })))
     for (let i = 0; i < values.length; i++) {
-      if (values[i] && values[i].data && values[i].data.length) {
+      if (values[i]?.data?.length) {
         tempLiveChannels = tempLiveChannels.concat(values[i].data)
       }
     }
@@ -385,7 +390,7 @@ const checkStatus = (init = false) => {
         console.warn(value, 'ist nicht Live')
       }
 
-      if (LiveChannels[value.nametoLowerCase] && LiveChannels[value.nametoLowerCase].disable) {
+      if (LiveChannels[value.nametoLowerCase]?.disable) {
         continue
       }
 
@@ -603,7 +608,7 @@ if (isFirefox) { // without Buttons
     window.getInit()
   }, UPDATE_INTERVAL)
 
-  if (windowSettings && windowSettings.PriorityChannels && windowSettings.PriorityChannels.length < 51) {
+  if (windowSettings?.PriorityChannels?.length > 0 && windowSettings?.PriorityChannels?.length < 51) {
     connect().then(() => {
       listen(windowSettings.PriorityChannels.map(chan => `video-playback.${chan.toLowerCase()}`))
     })

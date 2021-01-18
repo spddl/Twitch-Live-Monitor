@@ -1,3 +1,5 @@
+# See https://help.github.com/ignore-files/ for more about ignoring files.
+
 # dependencies
 /node_modules
 
@@ -7,6 +9,16 @@
 # production
 /build_chrome
 /build_firefox
+chrome.zip
+firefox.zip
+source.zip
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # secrets
 secrets.*.js

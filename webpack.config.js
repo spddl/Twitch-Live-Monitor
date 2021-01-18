@@ -5,12 +5,16 @@ const env = require('./utils/env')
 const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const WriteFilePlugin = require('write-file-webpack-plugin')
+const TerserPlugin = require('terser-webpack-plugin')
 
-// load the secrets
+const ASSET_PATH = process.env.ASSET_PATH || '/'
+
 const alias = {
   'react-dom': '@hot-loader/react-dom'
 }
+
+// load the secrets
+const secretsPath = path.join(__dirname, 'secrets.' + env.NODE_ENV + '.js')
 
 const fileExtensions = [
   'jpg',
@@ -25,23 +29,28 @@ const fileExtensions = [
   'woff2'
 ]
 
+if (fileSystem.existsSync(secretsPath)) {
+  alias.secrets = secretsPath
+}
+
 const createOptions = browser => {
   const options = {
+    name: browser,
     mode: process.env.NODE_ENV || 'development',
     entry: {
       options: path.join(__dirname, 'src', 'pages', 'Options', 'index.jsx'),
       popup: path.join(__dirname, 'src', 'pages', 'Popup', 'index.jsx'),
-      background: path.join(__dirname, 'src', 'pages', 'Background', 'index.js'),
-      contentScript: path.join(__dirname, 'src', 'pages', 'Content', 'index.js')
+      background: path.join(__dirname, 'src', 'pages', 'Background', 'index.js')
     },
     output: {
       path: path.resolve(__dirname, 'build_' + browser),
-      filename: '[name].bundle.js'
+      filename: '[name].bundle.js',
+      publicPath: ASSET_PATH
     },
     module: {
       rules: [
         {
-          // look for .css or .scss files
+        // look for .css or .scss files
           test: /\.(css|scss)$/,
           // in the `src` directory
           use: [
@@ -61,7 +70,10 @@ const createOptions = browser => {
         },
         {
           test: new RegExp('.(' + fileExtensions.join('|') + ')$'),
-          loader: 'file-loader?name=[name].[ext]',
+          loader: 'file-loader',
+          options: {
+            name: '[name].[ext]'
+          },
           exclude: /node_modules/
         },
         {
@@ -69,9 +81,17 @@ const createOptions = browser => {
           loader: 'html-loader',
           exclude: /node_modules/
         },
+        { test: /\.(ts|tsx)$/, loader: 'ts-loader', exclude: /node_modules/ },
         {
           test: /\.(js|jsx)$/,
-          loader: 'babel-loader',
+          use: [
+            {
+              loader: 'source-map-loader'
+            },
+            {
+              loader: 'babel-loader'
+            }
+          ],
           exclude: /node_modules/
         }
       ]
@@ -79,26 +99,26 @@ const createOptions = browser => {
     resolve: {
       alias: alias,
       extensions: fileExtensions
-        .map(extension => '.' + extension)
-        .concat(['.jsx', '.js', '.css'])
+        .map((extension) => '.' + extension)
+        .concat(['.js', '.jsx', '.ts', '.tsx', '.css'])
     },
     plugins: [
       new webpack.ProgressPlugin(),
       // clean the build folder
       new CleanWebpackPlugin({
         verbose: true,
-        cleanStaleWebpackAssets: false
+        cleanStaleWebpackAssets: true
       }),
-      // expose and write the allowed env consts on the compiled bundle
+      // expose and write the allowed env vars on the compiled bundle
       new webpack.EnvironmentPlugin(['NODE_ENV']),
-      new CopyWebpackPlugin(
-        [
+      new CopyWebpackPlugin({
+        patterns: [
           {
             from: fileSystem.existsSync(`src/manifest_${browser}.json`) ? `src/manifest_${browser}.json` : 'src/manifest.json',
-            to: path.join(__dirname, 'build_' + browser, 'manifest.json'), // to: path.join(__dirname, 'build'),
+            to: path.join(__dirname, 'build_' + browser, 'manifest.json'),
             force: true,
             transform: function (content, path) {
-              // generates the manifest file using the package.json informations
+            // generates the manifest file using the package.json informations
               return Buffer.from(
                 JSON.stringify({
                   description: process.env.npm_package_description,
@@ -108,40 +128,19 @@ const createOptions = browser => {
               )
             }
           }
-        ],
-        {
-          logLevel: 'info',
-          copyUnmodified: true
-        }
-      ),
-      new CopyWebpackPlugin(
-        [
-          {
-            from: 'src/pages/Content/content.styles.css',
-            // to: path.join(__dirname, 'build'),
-            to: path.join(__dirname, 'build_' + browser), // to: path.join(__dirname, 'build'),
-            force: true
-          }
-        ],
-        {
-          logLevel: 'info',
-          copyUnmodified: true
-        }
-      ),
-      // new HtmlWebpackPlugin({
-      //   template: path.join(__dirname, 'src', 'pages', 'Newtab', 'index.html'),
-      //   filename: 'newtab.html',
-      //   chunks: ['newtab']
-      // }),
+        ]
+      }),
       new HtmlWebpackPlugin({
         template: path.join(__dirname, 'src', 'pages', 'Options', 'index.html'),
         filename: 'options.html',
-        chunks: ['options']
+        chunks: ['options'],
+        cache: false
       }),
       new HtmlWebpackPlugin({
         template: path.join(__dirname, 'src', 'pages', 'Popup', 'index.html'),
         filename: 'popup.html',
-        chunks: ['popup']
+        chunks: ['popup'],
+        cache: false
       }),
       new HtmlWebpackPlugin({
         template: path.join(
@@ -152,22 +151,31 @@ const createOptions = browser => {
           'index.html'
         ),
         filename: 'background.html',
-        chunks: ['background']
-      }),
-      new WriteFilePlugin()
-    ]
+        chunks: ['background'],
+        cache: false
+      })
+    ],
+    infrastructureLogging: {
+      level: 'info'
+    }
   }
-
   return options
 }
 
-const options = [
-  createOptions('chrome'),
-  createOptions('firefox')
-]
-
-if (env.NODE_ENV === 'development') {
-  options.devtool = 'cheap-module-eval-source-map'
-}
+const options = [createOptions('chrome'), createOptions('firefox')].map(options => {
+  if (env.NODE_ENV === 'development') {
+    options.devtool = 'eval-cheap-module-source-map'
+  } else {
+    options.optimization = {
+      minimize: true,
+      minimizer: [
+        new TerserPlugin({
+          extractComments: false
+        })
+      ]
+    }
+  }
+  return options
+})
 
 module.exports = options

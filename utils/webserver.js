@@ -1,6 +1,7 @@
 // Do this as the first thing so that any code reading it knows the right env.
 process.env.BABEL_ENV = 'development'
 process.env.NODE_ENV = 'development'
+process.env.ASSET_PATH = '/'
 
 const WebpackDevServer = require('webpack-dev-server')
 const webpack = require('webpack')
@@ -29,10 +30,13 @@ delete config.chromeExtensionBoilerplate
 const compiler = webpack(config)
 
 const server = new WebpackDevServer(compiler, {
+  https: false,
   hot: true,
+  injectClient: false,
+  writeToDisk: true,
+  port: env.PORT,
   contentBase: path.join(__dirname, '../build'),
-  // sockPort: env.PORT,
-  // port: env.PORT,
+  publicPath: `http://localhost:${env.PORT}`,
   headers: {
     'Access-Control-Allow-Origin': '*'
   },
