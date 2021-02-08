@@ -1,7 +1,7 @@
 {
   "name": "Twitch Live Monitor",
   "short_name": "Twitch Live Monitor",
-  "version": "0.0.33",
+  "version": "0.0.34",
   "description": "Twitch TV extension to show the priority active favorite channels of as a notification to you.",
   "homepage_url": "https://github.com/spddl",
   "options_page": "options.html",

@@ -170,6 +170,24 @@ const connect = () => {
 
               const iconUrl = await toDataURL(chan.logo)
               pushNotification({ channel: chanName, title: `${chan.display_name} is Online`, message: `${chan.status || chan.description}`, iconUrl })
+
+              const cacheGameID = Object.keys(GameIDList).find(ele => {
+                if (GameIDList[ele] === chan.game) {
+                  return ele
+                }
+                return false
+              })
+              if (found === undefined) {
+                getGameNameID([chan.game])
+                  .then(data => {
+                    LiveChannels[chanName].game_id = data[0]
+                  })
+                  .catch(err => {
+                    console.warn(err)
+                  })
+              } else {
+                LiveChannels[chanName].game_id = cacheGameID
+              }
             }
           } else if (msg.type === 'stream-down') {
             LiveChannels[chanName] = { disable: true }
@@ -474,7 +492,7 @@ const checkStatus = (init = false) => {
 }
 
 const getGameIDList = (array = []) => {
-  return new Promise(async resolve => { // eslint-disable-line no-async-promise-executor
+  return new Promise((resolve, reject) => {
     if (array.length) {
       tempGameIDList = tempGameIDList.concat(array)
     }
@@ -482,20 +500,37 @@ const getGameIDList = (array = []) => {
     if (tempGameIDList.length) {
       // https://dev.twitch.tv/docs/api/reference#get-games
       const url = 'https://api.twitch.tv/helix/games?id=' + tempGameIDList.join('&id=')
-      await request({
+      request({
         url,
         OAuth: 'Bearer ' + windowSettings.OAuth
       }).then(result => {
         result.data.forEach(ele => {
           GameIDList[ele.id] = ele.name
         })
+        tempGameIDList = []
+        resolve()
       }, reason => {
         console.warn('// getGameIDList() rejection', reason)
-        // window.alert(reason)
+        reject(reason)
       })
-      tempGameIDList = []
     }
-    resolve()
+  })
+}
+
+const getGameNameID = (gameNameArray = []) => {
+  return new Promise((resolve, reject) => {
+    // https://dev.twitch.tv/docs/api/reference#get-games
+    const url = 'https://api.twitch.tv/helix/games?name=' + gameNameArray.join('&name=')
+    request({
+      url,
+      OAuth: 'Bearer ' + windowSettings.OAuth
+    }).then(result => {
+      resolve(result.data.map(ele => ele.id))
+    }, reason => {
+      console.warn('// getGameNameID() rejection', reason)
+      // window.alert(reason)
+      reject(reason)
+    })
   })
 }
 

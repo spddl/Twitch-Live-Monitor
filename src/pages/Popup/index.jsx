@@ -279,7 +279,7 @@ function GroupByViewers ({ streams, GameIDList, searchBar, checkboxDarkMode, che
                   primary={getTemplateData(popupFirstLine, channel)}
                   secondary={
                     (() => {
-                      if (popupSecondLine !== '' && popupThirdLine !== '') {
+                      if (popupSecondLine !== '' && popupThirdLine !== '' && channel.name !== 'Options') {
                         return (
                           <>
                             <Typography
@@ -300,7 +300,7 @@ function GroupByViewers ({ streams, GameIDList, searchBar, checkboxDarkMode, che
                             </Typography>
                           </>
                         )
-                      } else if (popupSecondLine !== '') {
+                      } else if (popupSecondLine !== '' && channel.name !== 'Options') {
                         return (
                           <Typography
                             component='span'
@@ -311,7 +311,7 @@ function GroupByViewers ({ streams, GameIDList, searchBar, checkboxDarkMode, che
                             {getTemplateData(popupSecondLine, channel)}
                           </Typography>
                         )
-                      } else if (popupThirdLine !== '') {
+                      } else if (popupThirdLine !== '' && channel.name !== 'Options') {
                         return (
                           <Typography
                             component='span'
