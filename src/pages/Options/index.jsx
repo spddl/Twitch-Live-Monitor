@@ -1,4 +1,4 @@
-/* global chrome, browser */
+/* global chrome, browser, location */
 
 import React from 'react'
 import ReactDOM from 'react-dom'
@@ -58,7 +58,7 @@ const background = browserAPI.extension.getBackgroundPage()
 //   }
 // })
 
-const allRows = background.getAllChannels()
+let allRows = background.getAllChannels()
 
 const useToolbarStyles = makeStyles(theme => ({
   root: {
@@ -324,8 +324,8 @@ function Options () { // https://material-ui.com/components/tables/
     rows = allRows.filter(item => item.nametoLowerCase.indexOf(filterToLowerCase) !== -1)
   }
 
-  const OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || ''
-  const userID = background.settingsReducer({ type: 'GET', value: { name: 'userID' } }) || ''
+  let OAuth = background.settingsReducer({ type: 'GET', value: { name: 'OAuth' } }) || ''
+  let userID = background.settingsReducer({ type: 'GET', value: { name: 'userID' } }) || ''
 
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === 'asc'
@@ -435,7 +435,7 @@ function Options () { // https://material-ui.com/components/tables/
     console.debug({ userID, OAuth, stateAccountName: state.accountname, rowsLength: rows.length, filter, state })
     NotificationTable = (
       <Grid item xs={12}>
-        <Typography variant='h4' component='h2' onClick={() => window.location.reload(false)}>
+        <Typography variant='h4' component='h2' onClick={() => location.reload()}>
           Try to Reload
         </Typography>
       </Grid>
@@ -664,7 +664,6 @@ function Options () { // https://material-ui.com/components/tables/
                 </Button>
               </DialogActions>
             </Dialog>
-
           </Grid>
 
           <Grid container item justify='space-between'>
@@ -672,10 +671,27 @@ function Options () { // https://material-ui.com/components/tables/
               Twitch Login
             </TwitchButton>
 
-            <Button variant='outlined' color='secondary' disabled={userID === '' && OAuth === ''} onClick={() => background.settingsReducer({ type: 'CLEAR' })}>
+            <Button
+              variant='outlined' color='secondary' disabled={userID === '' && OAuth === ''} onClick={() => {
+                background.settingsReducer({ type: 'CLEAR' })
+
+                userID = ''
+                OAuth = ''
+                rows = []
+                allRows = []
+                setfilter('')
+                // setState({ accountname: '' })
+                setState((prevState, props) => {
+                  return { ...prevState, accountname: '' }
+                })
+                location.reload()
+                // OAuth !== '' && state.accountname !== '' && rows.length === 0 && filter === ''
+              }}
+            >
               Clear Data
             </Button>
           </Grid>
+
           {NotificationTable}
         </Grid>
 

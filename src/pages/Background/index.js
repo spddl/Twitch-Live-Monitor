@@ -51,7 +51,6 @@ const OAuthListener = (tabId, changeInfo, tab) => { // https://developer.mozilla
       window.settingsReducer({ type: 'SET', value: { name: 'OAuth', value: urlRegex[1] } })
       const { OAuth, userID, accountnameInput } = window.settingsReducer({ type: 'GETALL' }) || {}
       browserAPI.tabs.onCreated.removeListener(OAuthListener)
-      console.debug({ OAuth, userID, accountnameInput })
       if (!userID) {
         const url = 'https://api.twitch.tv/kraken/users?login=' + accountnameInput
         request({ url, OAuth }).then(data => {
@@ -284,9 +283,14 @@ window.settingsReducer = ({ type, value }) => {
     case 'GETALL':
       return windowSettings
     case 'CLEAR':
-      browserAPI.browserAction.setBadgeText({ text: '0' })
+      console.debug(windowSettings)
+      browserAPI.browserAction.setBadgeText({ text: '' })
       windowSettings = {
+        ...windowSettings,
+        accountname: '',
+        accountnameInput: '',
         OAuth: '',
+        userID: '',
         PriorityChannels: [],
         changeTitleChannels: [],
         changeGameChannels: [],
@@ -298,7 +302,8 @@ window.settingsReducer = ({ type, value }) => {
       allChannelsId = []
 
       browserAPI.storage.sync.clear(() => {
-        window.alert('Settings deleted')
+        console.log('Settings deleted')
+        console.debug(windowSettings)
         lastErrorFunc()
       })
       return windowSettings
@@ -539,7 +544,6 @@ const getChannels = () => {
   return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
     let { OAuth, userID } = windowSettings || {}
     if (!OAuth || OAuth === '' || !userID || userID === '') {
-      console.debug("(window.settingsReducer) OAuth === '' || userID === ''")
       const result = await storageGet(['OAuth', 'userID'])
       // { OAuth, userID } = result
       OAuth = result.OAuth
@@ -547,7 +551,6 @@ const getChannels = () => {
     }
 
     if (!OAuth || OAuth === '' || !userID || userID === '') {
-      console.debug("result.OAuth === '' || result.userID === ''")
       return
     }
 
@@ -589,7 +592,6 @@ const getChannels = () => {
 }
 
 const pushNotification = ({ channel = '', title = '', message = '', iconUrl }) => {
-  console.debug('pushNotification', { channel, title, message, iconUrl })
   if (isFirefox) {
     browserAPI.notifications.create(channel, { // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/notifications/create
       type: 'basic',
